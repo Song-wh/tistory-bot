@@ -44,45 +44,45 @@ func (l *LottoCollector) GetLatestLotto(ctx context.Context) (*LottoResult, erro
 	startDate := time.Date(2002, 12, 7, 0, 0, 0, 0, time.Local)
 	now := time.Now()
 	weeks := int(now.Sub(startDate).Hours()/24/7) + 5 // 5회 여유분 추가
-	
+
 	return l.GetLottoByRound(ctx, weeks)
 }
 
 // GetLottoByRound 특정 회차 로또 당첨번호 조회
 func (l *LottoCollector) GetLottoByRound(ctx context.Context, round int) (*LottoResult, error) {
 	url := fmt.Sprintf("https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=%d", round)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	resp, err := l.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	var result LottoResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
-	
+
 	if result.DrawNo == 0 {
 		// 아직 추첨 전이면 이전 회차 조회
 		return l.GetLottoByRound(ctx, round-1)
 	}
-	
+
 	return &result, nil
 }
 
 // GenerateLottoPost 로또 포스트 생성
 func (l *LottoCollector) GenerateLottoPost(result *LottoResult) *Post {
 	title := fmt.Sprintf("🎰 %d회 로또 당첨번호 [%s]", result.DrawNo, result.DrawDate)
-	
+
 	// 번호 슬라이스
 	numbers := []int{result.Number1, result.Number2, result.Number3, result.Number4, result.Number5, result.Number6}
-	
+
 	var content strings.Builder
 	content.WriteString(fmt.Sprintf(`<h2>🎰 %d회 로또 당첨번호</h2>
 <p>추첨일: %s</p>
@@ -98,7 +98,7 @@ func (l *LottoCollector) GenerateLottoPost(result *LottoResult) *Post {
 		content.WriteString(fmt.Sprintf(`<span style="display: inline-block; width: 50px; height: 50px; border-radius: 50%%; background: %s; color: white; font-size: 20px; font-weight: bold; line-height: 50px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">%d</span>
 `, color, num))
 	}
-	
+
 	content.WriteString(fmt.Sprintf(`<span style="color: #eee; font-size: 24px; line-height: 50px; margin: 0 10px;">+</span>
 <span style="display: inline-block; width: 50px; height: 50px; border-radius: 50%%; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; font-size: 20px; font-weight: bold; line-height: 50px; border: 3px solid gold;">%d</span>
 </div>
@@ -510,4 +510,3 @@ func getPredictionColor(index int) string {
 	colors := []string{"#667eea", "#f093fb", "#4facfe", "#43e97b", "#fa709a"}
 	return colors[index%len(colors)]
 }
-

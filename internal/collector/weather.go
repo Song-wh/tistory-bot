@@ -38,18 +38,18 @@ func (w *WeatherCollector) GetWeather(ctx context.Context) ([]Weather, error) {
 
 	for _, city := range cities {
 		url := fmt.Sprintf("https://wttr.in/%s?format=j1", city)
-		
+
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			continue
 		}
 		req.Header.Set("User-Agent", "TistoryBot/1.0")
-		
+
 		resp, err := w.client.Do(req)
 		if err != nil {
 			continue
 		}
-		
+
 		var result map[string]interface{}
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			resp.Body.Close()
@@ -68,7 +68,7 @@ func (w *WeatherCollector) GetWeather(ctx context.Context) ([]Weather, error) {
 						desc = fmt.Sprintf("%v", d["value"])
 					}
 				}
-				
+
 				weathers = append(weathers, Weather{
 					City:        getCityKorean(city),
 					Temperature: temp,
@@ -86,7 +86,7 @@ func (w *WeatherCollector) GetWeather(ctx context.Context) ([]Weather, error) {
 func (w *WeatherCollector) GenerateWeatherPost(weathers []Weather) *Post {
 	now := time.Now()
 	title := fmt.Sprintf("🌤️ 오늘의 날씨 [%s] 전국 주요 도시", now.Format("01/02"))
-	
+
 	var content strings.Builder
 	content.WriteString(fmt.Sprintf(`<h2>🌤️ 오늘의 날씨</h2>
 <p>업데이트: %s</p>
@@ -136,13 +136,13 @@ func (w *WeatherCollector) GenerateWeatherPost(weathers []Weather) *Post {
 
 func getCityKorean(city string) string {
 	cities := map[string]string{
-		"Seoul":    "서울",
-		"Busan":    "부산",
-		"Incheon":  "인천",
-		"Daegu":    "대구",
-		"Daejeon":  "대전",
-		"Gwangju":  "광주",
-		"Jeju":     "제주",
+		"Seoul":   "서울",
+		"Busan":   "부산",
+		"Incheon": "인천",
+		"Daegu":   "대구",
+		"Daejeon": "대전",
+		"Gwangju": "광주",
+		"Jeju":    "제주",
 	}
 	if k, ok := cities[city]; ok {
 		return k
@@ -226,4 +226,3 @@ func parseInt(v interface{}) int {
 	}
 	return 0
 }
-

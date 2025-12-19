@@ -118,7 +118,7 @@ func (f *FortuneCollector) GenerateFortunePost(fortunes []ZodiacFortune) *Post {
 
 	for _, fortune := range fortunes {
 		stars := strings.Repeat("⭐", fortune.Overall) + strings.Repeat("☆", 5-fortune.Overall)
-		
+
 		content.WriteString(fmt.Sprintf(`
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid #6c5ce7;">
 <h3 style="margin-top: 0;">%s %s</h3>
@@ -155,4 +155,3 @@ func (f *FortuneCollector) GenerateFortunePost(fortunes []ZodiacFortune) *Post {
 func getStarRating(n int) string {
 	return strings.Repeat("★", n) + strings.Repeat("☆", 5-n)
 }
-

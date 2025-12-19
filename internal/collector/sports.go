@@ -41,13 +41,13 @@ func NewSportsCollector() *SportsCollector {
 func (s *SportsCollector) GetSportsNews(ctx context.Context) ([]SportsNews, error) {
 	// 스포츠 뉴스 RSS
 	rssURL := "https://www.chosun.com/arc/outboundfeeds/rss/category/sports/?outputType=xml"
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", rssURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "TistoryBot/1.0")
-	
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		// RSS 실패시 더미 데이터
@@ -64,7 +64,7 @@ func (s *SportsCollector) GetSportsNews(ctx context.Context) ([]SportsNews, erro
 // getDummySportsNews 스포츠 소식 (템플릿)
 func (s *SportsCollector) getDummySportsNews() []SportsNews {
 	now := time.Now()
-	
+
 	return []SportsNews{
 		{
 			Title:    fmt.Sprintf("[%s] 프로야구 주요 경기 결과", now.Format("01/02")),
@@ -133,7 +133,7 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 		if emoji == "" {
 			emoji = "🏅"
 		}
-		
+
 		content.WriteString(fmt.Sprintf(`
 <h3>%s %s</h3>
 <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
@@ -195,4 +195,3 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 		Tags:     []string{"스포츠", "프로야구", "축구", "오늘의스포츠", now.Format("01월02일스포츠")},
 	}
 }
-
