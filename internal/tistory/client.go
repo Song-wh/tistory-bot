@@ -301,55 +301,69 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 			_ = tagInput.ScrollIntoView()
 			time.Sleep(500 * time.Millisecond)
 
-			for _, tag := range tags {
-				// JavaScript로 포커스, 값 설정, Enter 키 이벤트
-				success := page.MustEval(`(tag) => {
-					const input = document.querySelector('input[placeholder*="태그"]');
-					if (input) {
-						input.scrollIntoView();
-						input.focus();
-						input.click();
-						input.value = tag;
-						input.dispatchEvent(new Event('input', { bubbles: true }));
-						input.dispatchEvent(new Event('change', { bubbles: true }));
-						
-						// Enter 키 이벤트 발생
-						const enterEvent = new KeyboardEvent('keydown', {
-							key: 'Enter',
-							code: 'Enter',
-							keyCode: 13,
-							which: 13,
-							bubbles: true,
-							cancelable: true
-						});
-						input.dispatchEvent(enterEvent);
-						
-						// keyup도 발생
-						input.dispatchEvent(new KeyboardEvent('keyup', {
-							key: 'Enter',
-							keyCode: 13,
-							bubbles: true
-						}));
-						
-						// 약간의 딜레이 후 입력란 비우기 (다음 태그 준비)
-						setTimeout(() => { input.value = ''; }, 100);
-						
-						return true;
-					}
-					return false;
-				}`, tag).Bool()
-
-				if success {
-					fmt.Printf("    태그 추가됨: %s\n", tag)
-				} else {
-					fmt.Printf("    ⚠️ 태그 추가 실패: %s\n", tag)
+			// 방법 1: 쉼표로 구분된 태그 한번에 입력 시도
+			allTags := strings.Join(tags, ",")
+			success := page.MustEval(`(allTags) => {
+				const input = document.querySelector('input[placeholder*="태그"]');
+				if (input) {
+					input.scrollIntoView();
+					input.focus();
+					input.click();
+					input.value = allTags;
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+					input.dispatchEvent(new Event('change', { bubbles: true }));
+					
+					// Enter 키 이벤트 발생
+					const enterEvent = new KeyboardEvent('keydown', {
+						key: 'Enter',
+						code: 'Enter',
+						keyCode: 13,
+						which: 13,
+						bubbles: true,
+						cancelable: true
+					});
+					input.dispatchEvent(enterEvent);
+					
+					return true;
 				}
-				time.Sleep(800 * time.Millisecond)
+				return false;
+			}`, allTags).Bool()
+
+			if !success {
+				// 방법 2: 하나씩 입력
+				for _, tag := range tags {
+					page.MustEval(`(tag) => {
+						const input = document.querySelector('input[placeholder*="태그"]');
+						if (input) {
+							input.scrollIntoView();
+							input.focus();
+							input.click();
+							input.value = tag;
+							input.dispatchEvent(new Event('input', { bubbles: true }));
+							
+							const enterEvent = new KeyboardEvent('keydown', {
+								key: 'Enter',
+								code: 'Enter',
+								keyCode: 13,
+								which: 13,
+								bubbles: true,
+								cancelable: true
+							});
+							input.dispatchEvent(enterEvent);
+							
+							setTimeout(() => { input.value = ''; }, 100);
+							return true;
+						}
+						return false;
+					}`, tag)
+					time.Sleep(600 * time.Millisecond)
+				}
 			}
-			fmt.Println("    태그 입력 완료")
+
+			fmt.Printf("    태그 입력됨: %s\n", allTags)
 		} else {
 			fmt.Println("    ⚠️ 태그 입력란을 찾을 수 없음 - JavaScript로 시도")
-			
+
 			// JavaScript fallback
 			for _, tag := range tags {
 				page.MustEval(`(tag) => {

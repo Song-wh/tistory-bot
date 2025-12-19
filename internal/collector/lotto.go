@@ -40,9 +40,10 @@ func NewLottoCollector() *LottoCollector {
 // GetLatestLotto 최신 로또 당첨번호 조회
 func (l *LottoCollector) GetLatestLotto(ctx context.Context) (*LottoResult, error) {
 	// 최신 회차 계산 (2002년 12월 7일 1회차 기준)
+	// 계산 오차를 방지하기 위해 여유있게 계산 후 실제 데이터로 확인
 	startDate := time.Date(2002, 12, 7, 0, 0, 0, 0, time.Local)
 	now := time.Now()
-	weeks := int(now.Sub(startDate).Hours() / 24 / 7)
+	weeks := int(now.Sub(startDate).Hours()/24/7) + 5 // 5회 여유분 추가
 	
 	return l.GetLottoByRound(ctx, weeks)
 }
