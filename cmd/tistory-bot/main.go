@@ -75,15 +75,16 @@ var postCmd = &cobra.Command{
 	Long: `지정한 카테고리의 글을 자동으로 작성합니다.
 
 카테고리:
-  crypto  - 코인 시세 정보
-  deals   - 핫딜/할인 정보
-  tech    - IT/테크 뉴스
-  movie   - 영화/드라마 정보
-  trend   - 트렌드/실검
-  lotto   - 로또 당첨번호
-  weather - 날씨/옷차림
-  fortune - 오늘의 운세
-  sports  - 스포츠 뉴스`,
+  crypto       - 코인 시세 정보
+  deals        - 핫딜/할인 정보
+  tech         - IT/테크 뉴스
+  movie        - 영화/드라마 정보
+  trend        - 트렌드/실검
+  lotto        - 로또 당첨번호
+  lotto-predict - 로또 예측번호 (AI 분석)
+  weather      - 날씨/옷차림
+  fortune      - 오늘의 운세
+  sports       - 스포츠 뉴스`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -161,6 +162,28 @@ var postCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			post = c.GenerateLottoPost(result)
+
+		case "lotto-predict":
+			fmt.Println("🔮 로또 예측번호 생성 중...")
+			c := collector.NewLottoCollector()
+			
+			// 최근 20회차 분석
+			results, err := c.GetRecentResults(ctx, 20)
+			if err != nil {
+				fmt.Printf("분석 실패: %v\n", err)
+				os.Exit(1)
+			}
+			
+			// 핫/콜드 번호 분석
+			hotNumbers, coldNumbers := c.AnalyzeNumbers(results)
+			
+			// 예측 번호 생성
+			predictions := c.GeneratePredictions(hotNumbers, coldNumbers)
+			
+			// 다음 회차 번호
+			nextRound := results[0].DrawNo + 1
+			
+			post = c.GeneratePredictionPost(nextRound, predictions, hotNumbers, coldNumbers)
 
 		case "weather":
 			fmt.Println("🌤️ 날씨 정보 수집 중...")
@@ -285,7 +308,7 @@ var runCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		categories := []string{"crypto", "tech", "movie", "trend", "lotto", "weather", "fortune", "sports"}
+		categories := []string{"crypto", "tech", "movie", "trend", "lotto", "lotto-predict", "weather", "fortune", "sports"}
 
 		for _, cat := range categories {
 			fmt.Printf("\n📝 [%s] 포스팅 중...\n", cat)
@@ -338,6 +361,18 @@ var runCmd = &cobra.Command{
 					continue
 				}
 				post = c.GenerateLottoPost(result)
+
+			case "lotto-predict":
+				c := collector.NewLottoCollector()
+				results, e := c.GetRecentResults(ctx, 20)
+				if e != nil {
+					fmt.Printf("  ❌ 분석 실패: %v\n", e)
+					continue
+				}
+				hotNumbers, coldNumbers := c.AnalyzeNumbers(results)
+				predictions := c.GeneratePredictions(hotNumbers, coldNumbers)
+				nextRound := results[0].DrawNo + 1
+				post = c.GeneratePredictionPost(nextRound, predictions, hotNumbers, coldNumbers)
 
 			case "weather":
 				c := collector.NewWeatherCollector()
@@ -501,6 +536,18 @@ func runPost(cfg *config.Config, category string) {
 			return
 		}
 		post = c.GenerateLottoPost(result)
+
+	case "lotto-predict":
+		c := collector.NewLottoCollector()
+		results, err := c.GetRecentResults(ctx, 20)
+		if err != nil {
+			fmt.Printf("  ❌ 분석 실패: %v\n", err)
+			return
+		}
+		hotNumbers, coldNumbers := c.AnalyzeNumbers(results)
+		predictions := c.GeneratePredictions(hotNumbers, coldNumbers)
+		nextRound := results[0].DrawNo + 1
+		post = c.GeneratePredictionPost(nextRound, predictions, hotNumbers, coldNumbers)
 
 	case "weather":
 		c := collector.NewWeatherCollector()

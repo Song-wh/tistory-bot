@@ -75,6 +75,8 @@ schedule:
     # 새 컨텐츠
     - category: lotto
       cron: "0 22 * * 6"           # 매주 토요일 22시 (추첨 후)
+    - category: lotto-predict
+      cron: "0 10 * * 5"           # 매주 금요일 10시 (추첨 전)
     - category: weather
       cron: "0 7,17 * * *"         # 하루 2회: 아침 7시, 저녁 17시
     - category: fortune
