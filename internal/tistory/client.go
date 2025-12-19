@@ -268,33 +268,65 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 	// 태그 입력
 	if len(tags) > 0 {
 		fmt.Printf("  🏷️ 태그 입력: %v\n", tags)
-		page.MustEval(`(tags) => {
-			// 태그 입력란 찾기
-			const tagInput = document.querySelector('input[placeholder*="태그"]') ||
-				document.querySelector('.tag-input') ||
-				document.querySelector('#tagText') ||
-				document.querySelector('input.tf_g') ||
-				document.querySelector('[class*="tag"] input');
-			
-			if (tagInput) {
-				for (const tag of tags) {
+
+		// 페이지 하단으로 스크롤
+		page.MustEval(`() => window.scrollTo(0, document.body.scrollHeight)`)
+		time.Sleep(500 * time.Millisecond)
+
+		// 태그 입력란 찾아서 클릭 및 입력
+		for _, tag := range tags {
+			page.MustEval(`(tag) => {
+				// 태그 입력란 찾기 (다양한 선택자 시도)
+				const selectors = [
+					'input[placeholder*="태그"]',
+					'input[placeholder*="Tag"]',
+					'.tag-input input',
+					'#tagText',
+					'input.tf_g',
+					'[class*="tag"] input[type="text"]',
+					'.editor-tag input'
+				];
+				
+				let tagInput = null;
+				for (const sel of selectors) {
+					tagInput = document.querySelector(sel);
+					if (tagInput) break;
+				}
+				
+				if (tagInput) {
+					tagInput.scrollIntoView();
+					tagInput.focus();
 					tagInput.value = tag;
 					tagInput.dispatchEvent(new Event('input', { bubbles: true }));
+					tagInput.dispatchEvent(new Event('change', { bubbles: true }));
 					
-					// Enter 키 이벤트
-					const enterEvent = new KeyboardEvent('keydown', {
+					// Enter 키로 태그 추가
+					const enterEvent = new KeyboardEvent('keypress', {
 						key: 'Enter',
 						code: 'Enter',
 						keyCode: 13,
+						charCode: 13,
 						which: 13,
-						bubbles: true
+						bubbles: true,
+						cancelable: true
 					});
 					tagInput.dispatchEvent(enterEvent);
+					
+					// 추가로 keyup 이벤트도 발생
+					tagInput.dispatchEvent(new KeyboardEvent('keyup', {
+						key: 'Enter',
+						keyCode: 13,
+						bubbles: true
+					}));
+					
+					return true;
 				}
-				return true;
-			}
-			return false;
-		}`, tags)
+				console.log('태그 입력란을 찾을 수 없음');
+				return false;
+			}`, tag)
+			time.Sleep(500 * time.Millisecond)
+		}
+		fmt.Println("    태그 입력 완료")
 		time.Sleep(1 * time.Second)
 	}
 
