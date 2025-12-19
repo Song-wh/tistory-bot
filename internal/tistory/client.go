@@ -219,6 +219,24 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 
 	time.Sleep(3 * time.Second)
 
+	// 임시저장 알림창 처리 (있으면 닫기)
+	page.MustEval(`() => {
+		// 모든 버튼에서 "사용 안함", "취소", "닫기" 텍스트 찾기
+		const buttons = document.querySelectorAll('button');
+		for (const btn of buttons) {
+			const text = (btn.textContent || '').trim();
+			if (text.includes('사용 안함') || text.includes('사용안함') || 
+			    text === '취소' || text === '닫기' || text === '아니오') {
+				btn.click();
+				console.log('Alert dismissed:', text);
+				return true;
+			}
+		}
+		return false;
+	}`)
+
+	time.Sleep(1 * time.Second)
+
 	// 제목 입력
 	titleInput, err := page.Timeout(10 * time.Second).Element("#post-title-inp")
 	if err != nil {
@@ -355,7 +373,7 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 			}
 			time.Sleep(800 * time.Millisecond)
 		}
-		
+
 		fmt.Println("    태그 입력 완료")
 		time.Sleep(1 * time.Second)
 	}
@@ -494,7 +512,12 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 	time.Sleep(5 * time.Second)
 
 	// 발행 완료 후 URL 가져오기
-	currentURL := page.MustInfo().URL
+	time.Sleep(2 * time.Second)
+
+	currentURL := ""
+	if info, err := page.Info(); err == nil {
+		currentURL = info.URL
+	}
 
 	// 포스트 ID 추출 시도
 	postID := ""
@@ -503,7 +526,8 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 		postID = parts[len(parts)-1]
 	}
 
-	page.MustClose()
+	// 페이지 닫기 (에러 무시)
+	_ = page.Close()
 
 	return &PostResult{
 		PostID: postID,
