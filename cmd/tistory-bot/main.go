@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Song-wh/tistory-bot/internal/collector"
 	"github.com/Song-wh/tistory-bot/internal/config"
 	"github.com/Song-wh/tistory-bot/internal/tistory"
+	"github.com/robfig/cron/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -307,6 +310,137 @@ var runCmd = &cobra.Command{
 	},
 }
 
+// schedule 명령어 - 자동 스케줄 실행
+var scheduleCmd = &cobra.Command{
+	Use:   "schedule",
+	Short: "자동 스케줄러 실행",
+	Long: `설정된 스케줄에 따라 자동으로 포스팅합니다.
+프로그램을 종료하려면 Ctrl+C를 누르세요.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			fmt.Printf("설정 로드 실패: %v\n", err)
+			os.Exit(1)
+		}
+
+		if !cfg.Schedule.Enabled {
+			fmt.Println("❌ 스케줄이 비활성화되어 있습니다.")
+			fmt.Println("config.yaml에서 schedule.enabled를 true로 설정하세요.")
+			os.Exit(1)
+		}
+
+		if len(cfg.Schedule.Jobs) == 0 {
+			fmt.Println("❌ 스케줄 작업이 없습니다.")
+			os.Exit(1)
+		}
+
+		fmt.Println("🚀 티스토리 자동 포스팅 스케줄러 시작!")
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Println("📅 등록된 스케줄:")
+
+		c := cron.New()
+
+		for _, job := range cfg.Schedule.Jobs {
+			category := job.Category
+			cronExpr := job.Cron
+
+			fmt.Printf("  • %s: %s\n", category, cronExpr)
+
+			// 클로저로 category 캡처
+			cat := category
+			c.AddFunc(cronExpr, func() {
+				fmt.Printf("\n⏰ [스케줄 실행] %s 포스팅 시작...\n", cat)
+				runPost(cfg, cat)
+			})
+		}
+
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		fmt.Println("⏳ 스케줄 대기 중... (종료: Ctrl+C)")
+
+		c.Start()
+
+		// 종료 시그널 대기
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		fmt.Println("\n🛑 스케줄러 종료...")
+		c.Stop()
+	},
+}
+
+// runPost 포스팅 실행 헬퍼 함수
+func runPost(cfg *config.Config, category string) {
+	ctx := context.Background()
+
+	client := tistory.NewClient(
+		cfg.Tistory.Email,
+		cfg.Tistory.Password,
+		cfg.Tistory.BlogName,
+		cfg.Browser.Headless,
+		cfg.Browser.SlowMotion,
+	)
+	defer client.Close()
+
+	var post *collector.Post
+
+	switch category {
+	case "crypto":
+		c := collector.NewStockCollector()
+		cryptos, err := c.GetTopCryptos(ctx, 10)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateCryptoPost(cryptos)
+
+	case "tech":
+		c := collector.NewTechCollector()
+		news, err := c.GetTechNews(ctx, 10)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateTechPost(news)
+
+	case "movie":
+		c := collector.NewMovieCollector(cfg.TMDB.APIKey)
+		movies, err := c.GetNowPlaying(ctx, 10)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateMoviePost(movies, "now_playing")
+
+	case "trend":
+		c := collector.NewTrendCollector()
+		trends, err := c.GetGoogleTrends(ctx, 10)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateTrendPost(trends)
+
+	default:
+		fmt.Printf("  ❌ 알 수 없는 카테고리: %s\n", category)
+		return
+	}
+
+	categoryName := cfg.Categories[post.Category]
+	if categoryName == "" {
+		fmt.Printf("  ⚠️ 카테고리 '%s' 미설정\n", post.Category)
+		return
+	}
+
+	_, err := client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+	if err != nil {
+		fmt.Printf("  ❌ 포스팅 실패: %v\n", err)
+		return
+	}
+
+	fmt.Printf("  ✅ 포스팅 완료: %s\n", post.Title)
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "설정 파일 경로")
 
@@ -314,6 +448,7 @@ func init() {
 	rootCmd.AddCommand(postCmd)
 	rootCmd.AddCommand(categoriesCmd)
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(scheduleCmd)
 }
 
 func main() {

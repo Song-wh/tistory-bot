@@ -49,9 +49,14 @@ type CoupangConfig struct {
 
 // ScheduleConfig 스케줄 설정
 type ScheduleConfig struct {
-	Enabled    bool     `yaml:"enabled"`
-	Cron       string   `yaml:"cron"`
-	Categories []string `yaml:"categories"`
+	Enabled bool          `yaml:"enabled"`
+	Jobs    []ScheduleJob `yaml:"jobs"`
+}
+
+// ScheduleJob 개별 스케줄 작업
+type ScheduleJob struct {
+	Category string `yaml:"category"`
+	Cron     string `yaml:"cron"`
 }
 
 // Load 설정 파일 로드

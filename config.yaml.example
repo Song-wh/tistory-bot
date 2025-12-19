@@ -52,11 +52,16 @@ coupang:
 
 # ===========================================
 # 자동 스케줄 설정
+# go run ./cmd/tistory-bot schedule 로 실행
 # ===========================================
 schedule:
-  enabled: false
-  cron: "0 9,15,21 * * *"  # 매일 9시, 15시, 21시
-  categories:
-    - crypto
-    - tech
-    - trend
+  enabled: true
+  jobs:
+    - category: trend
+      cron: "0 9,14,20 * * *"      # 하루 3회: 9시, 14시, 20시
+    - category: crypto
+      cron: "0 10,18 * * *"        # 하루 2회: 10시, 18시
+    - category: tech
+      cron: "0 12 * * *"           # 하루 1회: 12시
+    - category: movie
+      cron: "0 21 * * 1,4"         # 주 2회: 월/목 21시
