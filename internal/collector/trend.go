@@ -3,7 +3,9 @@ package collector
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -153,7 +155,6 @@ func (t *TrendCollector) GenerateTrendPost(trends []Trend) *Post {
 	}
 }
 
-func decodeXML(body interface{}, v interface{}) error {
-	// xml.Decoder 사용
-	return nil
+func decodeXML(body io.Reader, v interface{}) error {
+	return xml.NewDecoder(body).Decode(v)
 }

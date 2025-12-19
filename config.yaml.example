@@ -1,22 +1,27 @@
 # 티스토리 자동 포스팅 봇 설정
 
 # ===========================================
-# 티스토리 API 설정
-# https://www.tistory.com/guide/api/manage/register 에서 앱 등록
+# 티스토리 로그인 정보
+# 카카오 계정으로 로그인합니다
 # ===========================================
 tistory:
-  client_id: ""        # 티스토리 앱 Client ID
-  client_secret: ""    # 티스토리 앱 Client Secret
-  redirect_uri: "http://localhost:8080/callback"
-  access_token: ""     # 인증 후 발급받은 토큰
-  blog_name: ""        # 블로그 주소 (예: myblog.tistory.com -> myblog)
+  email: ""           # 카카오 계정 이메일
+  password: ""        # 카카오 계정 비밀번호
+  blog_name: ""       # 블로그 주소 (예: myblog.tistory.com -> myblog)
 
 # ===========================================
-# 카테고리 매핑 (티스토리 카테고리 ID)
+# 브라우저 설정
+# ===========================================
+browser:
+  headless: true      # true: 브라우저 숨김, false: 브라우저 표시 (디버깅용)
+  slow_motion: 0      # 동작 간 딜레이(ms) - 디버깅 시 500~1000 권장
+
+# ===========================================
+# 카테고리 매핑 (티스토리 카테고리 이름)
 # tistory-bot categories 명령으로 확인 가능
 # ===========================================
 categories:
-  "주식/코인": ""      # 카테고리 ID 입력
+  "주식/코인": ""      # 카테고리 이름 입력
   "핫딜/할인": ""
   "IT/테크": ""
   "영화/드라마": ""
@@ -55,4 +60,3 @@ schedule:
     - crypto
     - tech
     - trend
-

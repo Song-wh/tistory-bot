@@ -8,21 +8,26 @@ import (
 
 // Config 설정
 type Config struct {
-	Tistory    TistoryConfig         `yaml:"tistory"`
-	TMDB       TMDBConfig            `yaml:"tmdb"`
-	Naver      NaverConfig           `yaml:"naver"`
-	Coupang    CoupangConfig         `yaml:"coupang"`
-	Categories map[string]string     `yaml:"categories"`
-	Schedule   ScheduleConfig        `yaml:"schedule"`
+	Tistory    TistoryConfig     `yaml:"tistory"`
+	Browser    BrowserConfig     `yaml:"browser"`
+	TMDB       TMDBConfig        `yaml:"tmdb"`
+	Naver      NaverConfig       `yaml:"naver"`
+	Coupang    CoupangConfig     `yaml:"coupang"`
+	Categories map[string]string `yaml:"categories"`
+	Schedule   ScheduleConfig    `yaml:"schedule"`
 }
 
-// TistoryConfig 티스토리 설정
+// TistoryConfig 티스토리 설정 (브라우저 자동화용)
 type TistoryConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	RedirectURI  string `yaml:"redirect_uri"`
-	AccessToken  string `yaml:"access_token"`
-	BlogName     string `yaml:"blog_name"`
+	Email    string `yaml:"email"`
+	Password string `yaml:"password"`
+	BlogName string `yaml:"blog_name"`
+}
+
+// BrowserConfig 브라우저 설정
+type BrowserConfig struct {
+	Headless   bool `yaml:"headless"`
+	SlowMotion int  `yaml:"slow_motion"`
 }
 
 // TMDBConfig TMDB API 설정
@@ -44,8 +49,8 @@ type CoupangConfig struct {
 
 // ScheduleConfig 스케줄 설정
 type ScheduleConfig struct {
-	Enabled  bool     `yaml:"enabled"`
-	Cron     string   `yaml:"cron"`
+	Enabled    bool     `yaml:"enabled"`
+	Cron       string   `yaml:"cron"`
 	Categories []string `yaml:"categories"`
 }
 
@@ -61,6 +66,10 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
+	// 기본값 설정
+	if cfg.Browser.Headless == false && cfg.Browser.SlowMotion == 0 {
+		cfg.Browser.Headless = true
+	}
+
 	return &cfg, nil
 }
-

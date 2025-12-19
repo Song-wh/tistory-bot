@@ -23,13 +23,15 @@ var rootCmd = &cobra.Command{
   • 핫딜/할인 정보
   • IT/테크 뉴스
   • 영화/드라마 정보
-  • 트렌드/실검`,
+  • 트렌드/실검
+
+⚠️  브라우저 자동화 방식으로 동작합니다 (API 키 필요 없음)`,
 }
 
-// auth 명령어 - 티스토리 인증
-var authCmd = &cobra.Command{
-	Use:   "auth",
-	Short: "티스토리 API 인증",
+// login 명령어 - 로그인 테스트
+var loginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "티스토리 로그인 테스트",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
 		if err != nil {
@@ -37,40 +39,29 @@ var authCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		authURL := tistory.GetAuthURL(cfg.Tistory.ClientID, cfg.Tistory.RedirectURI)
-		fmt.Println("🔑 브라우저에서 다음 URL을 열어 인증하세요:")
-		fmt.Println(authURL)
-		fmt.Println("\n인증 후 리다이렉트된 URL의 code 파라미터를 복사하세요.")
-	},
-}
-
-// token 명령어 - 토큰 발급
-var tokenCmd = &cobra.Command{
-	Use:   "token [code]",
-	Short: "액세스 토큰 발급",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		cfg, err := config.Load(cfgFile)
-		if err != nil {
-			fmt.Printf("설정 로드 실패: %v\n", err)
+		if cfg.Tistory.Email == "" || cfg.Tistory.Password == "" {
+			fmt.Println("❌ config.yaml에 email과 password를 설정하세요.")
 			os.Exit(1)
 		}
 
-		code := args[0]
-		token, err := tistory.GetAccessToken(
-			cfg.Tistory.ClientID,
-			cfg.Tistory.ClientSecret,
-			cfg.Tistory.RedirectURI,
-			code,
+		fmt.Println("🔑 로그인 테스트 중...")
+		fmt.Println("  (브라우저가 실행됩니다)")
+
+		client := tistory.NewClient(
+			cfg.Tistory.Email,
+			cfg.Tistory.Password,
+			cfg.Tistory.BlogName,
+			false, // headless=false로 브라우저 표시
+			500,   // 느린 동작으로 확인 가능
 		)
-		if err != nil {
-			fmt.Printf("토큰 발급 실패: %v\n", err)
+
+		ctx := context.Background()
+		if err := client.TestLogin(ctx); err != nil {
+			fmt.Printf("❌ 로그인 실패: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("✅ 액세스 토큰 발급 성공!")
-		fmt.Printf("토큰: %s\n", token)
-		fmt.Println("\n이 토큰을 config.yaml의 access_token에 저장하세요.")
+		fmt.Println("✅ 로그인 성공!")
 	},
 }
 
@@ -94,10 +85,22 @@ var postCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if cfg.Tistory.Email == "" || cfg.Tistory.Password == "" {
+			fmt.Println("❌ config.yaml에 email과 password를 설정하세요.")
+			os.Exit(1)
+		}
+
 		category := args[0]
 		ctx := context.Background()
 
-		client := tistory.NewClient(cfg.Tistory.AccessToken, cfg.Tistory.BlogName)
+		client := tistory.NewClient(
+			cfg.Tistory.Email,
+			cfg.Tistory.Password,
+			cfg.Tistory.BlogName,
+			cfg.Browser.Headless,
+			cfg.Browser.SlowMotion,
+		)
+		defer client.Close()
 
 		var post *collector.Post
 
@@ -147,17 +150,18 @@ var postCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// 카테고리 ID 찾기
-		categoryID := cfg.Categories[post.Category]
-		if categoryID == "" {
-			fmt.Printf("⚠️ 카테고리 '%s'의 ID가 설정되지 않았습니다.\n", post.Category)
-			fmt.Println("config.yaml에서 카테고리 ID를 설정하세요.")
+		// 카테고리 이름 찾기
+		categoryName := cfg.Categories[post.Category]
+		if categoryName == "" {
+			fmt.Printf("⚠️ 카테고리 '%s'가 설정되지 않았습니다.\n", post.Category)
+			fmt.Println("config.yaml에서 카테고리 이름을 설정하세요.")
 			os.Exit(1)
 		}
 
 		fmt.Printf("📝 포스팅: %s\n", post.Title)
+		fmt.Println("  (브라우저에서 작업 중...)")
 
-		result, err := client.WritePost(ctx, post.Title, post.Content, categoryID, post.Tags, 3)
+		result, err := client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
 		if err != nil {
 			fmt.Printf("포스팅 실패: %v\n", err)
 			os.Exit(1)
@@ -179,7 +183,23 @@ var categoriesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		client := tistory.NewClient(cfg.Tistory.AccessToken, cfg.Tistory.BlogName)
+		if cfg.Tistory.Email == "" || cfg.Tistory.Password == "" {
+			fmt.Println("❌ config.yaml에 email과 password를 설정하세요.")
+			os.Exit(1)
+		}
+
+		fmt.Println("📂 카테고리 조회 중...")
+		fmt.Println("  (브라우저에서 작업 중...)")
+
+		client := tistory.NewClient(
+			cfg.Tistory.Email,
+			cfg.Tistory.Password,
+			cfg.Tistory.BlogName,
+			cfg.Browser.Headless,
+			cfg.Browser.SlowMotion,
+		)
+		defer client.Close()
+
 		ctx := context.Background()
 
 		categories, err := client.GetCategories(ctx)
@@ -188,12 +208,12 @@ var categoriesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("📂 블로그 카테고리:")
+		fmt.Println("\n📂 블로그 카테고리:")
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 		for _, cat := range categories {
-			fmt.Printf("  [%s] %s (글 %s개)\n", cat.ID, cat.Name, cat.Entries)
+			fmt.Printf("  • %s\n", cat.Name)
 		}
-		fmt.Println("\nconfig.yaml의 categories에 ID를 설정하세요.")
+		fmt.Println("\nconfig.yaml의 categories에 이름을 그대로 입력하세요.")
 	},
 }
 
@@ -202,14 +222,85 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "모든 카테고리 자동 포스팅",
 	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			fmt.Printf("설정 로드 실패: %v\n", err)
+			os.Exit(1)
+		}
+
 		fmt.Println("🚀 티스토리 자동 포스팅 시작!")
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+		client := tistory.NewClient(
+			cfg.Tistory.Email,
+			cfg.Tistory.Password,
+			cfg.Tistory.BlogName,
+			cfg.Browser.Headless,
+			cfg.Browser.SlowMotion,
+		)
+		defer client.Close()
+
+		ctx := context.Background()
 
 		categories := []string{"crypto", "tech", "movie", "trend"}
 
 		for _, cat := range categories {
 			fmt.Printf("\n📝 [%s] 포스팅 중...\n", cat)
-			// 각 카테고리별 포스팅 로직 실행
+
+			var post *collector.Post
+			var err error
+
+			switch cat {
+			case "crypto":
+				c := collector.NewStockCollector()
+				cryptos, e := c.GetTopCryptos(ctx, 10)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateCryptoPost(cryptos)
+
+			case "tech":
+				c := collector.NewTechCollector()
+				news, e := c.GetTechNews(ctx, 10)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateTechPost(news)
+
+			case "movie":
+				c := collector.NewMovieCollector(cfg.TMDB.APIKey)
+				movies, e := c.GetNowPlaying(ctx, 10)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateMoviePost(movies, "now_playing")
+
+			case "trend":
+				c := collector.NewTrendCollector()
+				trends, e := c.GetGoogleTrends(ctx, 10)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateTrendPost(trends)
+			}
+
+			categoryName := cfg.Categories[post.Category]
+			if categoryName == "" {
+				fmt.Printf("  ⚠️ 카테고리 '%s' 미설정, 건너뜀\n", post.Category)
+				continue
+			}
+
+			_, err = client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+			if err != nil {
+				fmt.Printf("  ❌ 포스팅 실패: %v\n", err)
+				continue
+			}
+
+			fmt.Printf("  ✅ 완료: %s\n", post.Title)
 		}
 
 		fmt.Println("\n✅ 모든 포스팅 완료!")
@@ -218,9 +309,8 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "설정 파일 경로")
-	
-	rootCmd.AddCommand(authCmd)
-	rootCmd.AddCommand(tokenCmd)
+
+	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(postCmd)
 	rootCmd.AddCommand(categoriesCmd)
 	rootCmd.AddCommand(runCmd)
@@ -232,4 +322,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-
