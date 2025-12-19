@@ -114,3 +114,4 @@ func (d *DealsCollector) GetCoupangDeals(ctx context.Context, apiKey, secretKey 
 	// https://partners.coupang.com/ 에서 API 발급 필요
 	return nil, fmt.Errorf("쿠팡파트너스 API 키가 필요합니다")
 }
+

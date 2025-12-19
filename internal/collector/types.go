@@ -27,3 +27,4 @@ const (
 	CategoryMovie = "영화/드라마"
 	CategoryTrend = "트렌드/실검"
 )
+

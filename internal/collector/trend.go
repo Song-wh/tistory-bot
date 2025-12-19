@@ -158,3 +158,4 @@ func (t *TrendCollector) GenerateTrendPost(trends []Trend) *Post {
 func decodeXML(body io.Reader, v interface{}) error {
 	return xml.NewDecoder(body).Decode(v)
 }
+

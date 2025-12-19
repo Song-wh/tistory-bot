@@ -194,3 +194,4 @@ func (m *MovieCollector) GenerateMoviePost(movies []Movie, postType string) *Pos
 		Tags:     []string{"영화", "드라마", "넷플릭스", "개봉예정", "박스오피스"},
 	}
 }
+

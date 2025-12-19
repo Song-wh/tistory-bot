@@ -1,6 +1,6 @@
 module github.com/Song-wh/tistory-bot
 
-go 1.21
+go 1.23
 
 require (
 	github.com/go-rod/rod v0.116.2
