@@ -79,7 +79,11 @@ var postCmd = &cobra.Command{
   deals   - 핫딜/할인 정보
   tech    - IT/테크 뉴스
   movie   - 영화/드라마 정보
-  trend   - 트렌드/실검`,
+  trend   - 트렌드/실검
+  lotto   - 로또 당첨번호
+  weather - 날씨/옷차림
+  fortune - 오늘의 운세
+  sports  - 스포츠 뉴스`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -147,6 +151,42 @@ var postCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			post = c.GenerateTrendPost(trends)
+
+		case "lotto":
+			fmt.Println("🎰 로또 당첨번호 수집 중...")
+			c := collector.NewLottoCollector()
+			result, err := c.GetLatestLotto(ctx)
+			if err != nil {
+				fmt.Printf("수집 실패: %v\n", err)
+				os.Exit(1)
+			}
+			post = c.GenerateLottoPost(result)
+
+		case "weather":
+			fmt.Println("🌤️ 날씨 정보 수집 중...")
+			c := collector.NewWeatherCollector()
+			weathers, err := c.GetWeather(ctx)
+			if err != nil {
+				fmt.Printf("수집 실패: %v\n", err)
+				os.Exit(1)
+			}
+			post = c.GenerateWeatherPost(weathers)
+
+		case "fortune":
+			fmt.Println("🔮 오늘의 운세 생성 중...")
+			c := collector.NewFortuneCollector()
+			fortunes := c.GetTodayFortune()
+			post = c.GenerateFortunePost(fortunes)
+
+		case "sports":
+			fmt.Println("⚽ 스포츠 뉴스 수집 중...")
+			c := collector.NewSportsCollector()
+			news, err := c.GetSportsNews(ctx)
+			if err != nil {
+				fmt.Printf("수집 실패: %v\n", err)
+				os.Exit(1)
+			}
+			post = c.GenerateSportsPost(news)
 
 		default:
 			fmt.Printf("알 수 없는 카테고리: %s\n", category)
@@ -245,7 +285,7 @@ var runCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		categories := []string{"crypto", "tech", "movie", "trend"}
+		categories := []string{"crypto", "tech", "movie", "trend", "lotto", "weather", "fortune", "sports"}
 
 		for _, cat := range categories {
 			fmt.Printf("\n📝 [%s] 포스팅 중...\n", cat)
@@ -289,6 +329,38 @@ var runCmd = &cobra.Command{
 					continue
 				}
 				post = c.GenerateTrendPost(trends)
+
+			case "lotto":
+				c := collector.NewLottoCollector()
+				result, e := c.GetLatestLotto(ctx)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateLottoPost(result)
+
+			case "weather":
+				c := collector.NewWeatherCollector()
+				weathers, e := c.GetWeather(ctx)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateWeatherPost(weathers)
+
+			case "fortune":
+				c := collector.NewFortuneCollector()
+				fortunes := c.GetTodayFortune()
+				post = c.GenerateFortunePost(fortunes)
+
+			case "sports":
+				c := collector.NewSportsCollector()
+				news, e := c.GetSportsNews(ctx)
+				if e != nil {
+					fmt.Printf("  ❌ 수집 실패: %v\n", e)
+					continue
+				}
+				post = c.GenerateSportsPost(news)
 			}
 
 			categoryName := cfg.Categories[post.Category]
@@ -420,6 +492,38 @@ func runPost(cfg *config.Config, category string) {
 			return
 		}
 		post = c.GenerateTrendPost(trends)
+
+	case "lotto":
+		c := collector.NewLottoCollector()
+		result, err := c.GetLatestLotto(ctx)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateLottoPost(result)
+
+	case "weather":
+		c := collector.NewWeatherCollector()
+		weathers, err := c.GetWeather(ctx)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateWeatherPost(weathers)
+
+	case "fortune":
+		c := collector.NewFortuneCollector()
+		fortunes := c.GetTodayFortune()
+		post = c.GenerateFortunePost(fortunes)
+
+	case "sports":
+		c := collector.NewSportsCollector()
+		news, err := c.GetSportsNews(ctx)
+		if err != nil {
+			fmt.Printf("  ❌ 수집 실패: %v\n", err)
+			return
+		}
+		post = c.GenerateSportsPost(news)
 
 	default:
 		fmt.Printf("  ❌ 알 수 없는 카테고리: %s\n", category)
