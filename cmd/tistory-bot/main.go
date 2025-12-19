@@ -84,7 +84,8 @@ var postCmd = &cobra.Command{
   lotto-predict - 로또 예측번호 (AI 분석)
   weather      - 날씨/옷차림
   fortune      - 오늘의 운세
-  sports       - 스포츠 뉴스`,
+  sports       - 스포츠 뉴스
+  coupang      - 쿠팡 특가/파트너스 💰`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -211,6 +212,20 @@ var postCmd = &cobra.Command{
 			}
 			post = c.GenerateSportsPost(news)
 
+		case "coupang":
+			fmt.Println("🛒 쿠팡 특가 수집 중...")
+			c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
+			products, err := c.GetGoldboxProducts(ctx, 10)
+			if err != nil {
+				fmt.Printf("크롤링 실패, 샘플 데이터 사용: %v\n", err)
+				products = c.GetMockProducts(10)
+			}
+			if len(products) == 0 {
+				fmt.Println("상품 없음, 샘플 데이터 사용")
+				products = c.GetMockProducts(10)
+			}
+			post = c.GenerateCoupangPost(products)
+
 		default:
 			fmt.Printf("알 수 없는 카테고리: %s\n", category)
 			os.Exit(1)
@@ -308,7 +323,7 @@ var runCmd = &cobra.Command{
 
 		ctx := context.Background()
 
-		categories := []string{"crypto", "tech", "movie", "trend", "lotto", "lotto-predict", "weather", "fortune", "sports"}
+		categories := []string{"crypto", "tech", "movie", "trend", "lotto", "lotto-predict", "weather", "fortune", "sports", "coupang"}
 
 		for _, cat := range categories {
 			fmt.Printf("\n📝 [%s] 포스팅 중...\n", cat)
@@ -396,6 +411,18 @@ var runCmd = &cobra.Command{
 					continue
 				}
 				post = c.GenerateSportsPost(news)
+
+			case "coupang":
+				c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
+				products, e := c.GetGoldboxProducts(ctx, 10)
+				if e != nil {
+					fmt.Printf("  ⚠️ 크롤링 실패, 샘플 사용: %v\n", e)
+					products = c.GetMockProducts(10)
+				}
+				if len(products) == 0 {
+					products = c.GetMockProducts(10)
+				}
+				post = c.GenerateCoupangPost(products)
 			}
 
 			categoryName := cfg.Categories[post.Category]
@@ -571,6 +598,18 @@ func runPost(cfg *config.Config, category string) {
 			return
 		}
 		post = c.GenerateSportsPost(news)
+
+	case "coupang":
+		c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
+		products, err := c.GetGoldboxProducts(ctx, 10)
+		if err != nil {
+			fmt.Printf("  ⚠️ 크롤링 실패, 샘플 사용: %v\n", err)
+			products = c.GetMockProducts(10)
+		}
+		if len(products) == 0 {
+			products = c.GetMockProducts(10)
+		}
+		post = c.GenerateCoupangPost(products)
 
 	default:
 		fmt.Printf("  ❌ 알 수 없는 카테고리: %s\n", category)

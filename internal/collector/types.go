@@ -21,10 +21,11 @@ type Category struct {
 
 // 카테고리 상수
 const (
-	CategoryStock = "주식/코인"
-	CategoryDeal  = "핫딜/할인"
-	CategoryTech  = "IT/테크"
-	CategoryMovie = "영화/드라마"
-	CategoryTrend = "트렌드/실검"
+	CategoryStock   = "주식/코인"
+	CategoryDeal    = "핫딜/할인"
+	CategoryTech    = "IT/테크"
+	CategoryMovie   = "영화/드라마"
+	CategoryTrend   = "트렌드/실검"
+	CategoryCoupang = "쿠팡/특가"
 )
 

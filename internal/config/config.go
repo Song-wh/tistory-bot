@@ -43,8 +43,9 @@ type NaverConfig struct {
 
 // CoupangConfig 쿠팡파트너스 설정
 type CoupangConfig struct {
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
+	PartnerID string `yaml:"partner_id"` // 파트너스 ID (예: AF3262952)
+	AccessKey string `yaml:"access_key"` // API용 (선택)
+	SecretKey string `yaml:"secret_key"` // API용 (선택)
 }
 
 // ScheduleConfig 스케줄 설정
