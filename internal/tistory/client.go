@@ -271,62 +271,114 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 
 		// 페이지 하단으로 스크롤
 		page.MustEval(`() => window.scrollTo(0, document.body.scrollHeight)`)
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 
-		// 태그 입력란 찾아서 클릭 및 입력
-		for _, tag := range tags {
-			page.MustEval(`(tag) => {
-				// 태그 입력란 찾기 (다양한 선택자 시도)
-				const selectors = [
-					'input[placeholder*="태그"]',
-					'input[placeholder*="Tag"]',
-					'.tag-input input',
-					'#tagText',
-					'input.tf_g',
-					'[class*="tag"] input[type="text"]',
-					'.editor-tag input'
-				];
-				
-				let tagInput = null;
-				for (const sel of selectors) {
-					tagInput = document.querySelector(sel);
-					if (tagInput) break;
-				}
-				
-				if (tagInput) {
-					tagInput.scrollIntoView();
-					tagInput.focus();
-					tagInput.value = tag;
-					tagInput.dispatchEvent(new Event('input', { bubbles: true }));
-					tagInput.dispatchEvent(new Event('change', { bubbles: true }));
-					
-					// Enter 키로 태그 추가
-					const enterEvent = new KeyboardEvent('keypress', {
-						key: 'Enter',
-						code: 'Enter',
-						keyCode: 13,
-						charCode: 13,
-						which: 13,
-						bubbles: true,
-						cancelable: true
-					});
-					tagInput.dispatchEvent(enterEvent);
-					
-					// 추가로 keyup 이벤트도 발생
-					tagInput.dispatchEvent(new KeyboardEvent('keyup', {
-						key: 'Enter',
-						keyCode: 13,
-						bubbles: true
-					}));
-					
-					return true;
-				}
-				console.log('태그 입력란을 찾을 수 없음');
-				return false;
-			}`, tag)
-			time.Sleep(500 * time.Millisecond)
+		// 태그 입력란 찾기 - 다양한 선택자 시도
+		tagSelectors := []string{
+			`input[placeholder*="태그"]`,
+			`input[placeholder*="Tag"]`,
+			`input[placeholder*="tag"]`,
+			`.tag-input input`,
+			`#tagText`,
+			`input.tf_g`,
+			`[class*="tag"] input[type="text"]`,
+			`.editor-tag input`,
+			`input[class*="tag"]`,
 		}
-		fmt.Println("    태그 입력 완료")
+
+		var tagInput *rod.Element
+		for _, sel := range tagSelectors {
+			el, err := page.Timeout(2 * time.Second).Element(sel)
+			if err == nil && el != nil {
+				tagInput = el
+				fmt.Printf("    태그 입력란 발견: %s\n", sel)
+				break
+			}
+		}
+
+		if tagInput != nil {
+			// 태그 입력란으로 스크롤
+			_ = tagInput.ScrollIntoView()
+			time.Sleep(500 * time.Millisecond)
+
+			for _, tag := range tags {
+				// JavaScript로 포커스, 값 설정, Enter 키 이벤트
+				success := page.MustEval(`(tag) => {
+					const input = document.querySelector('input[placeholder*="태그"]');
+					if (input) {
+						input.scrollIntoView();
+						input.focus();
+						input.click();
+						input.value = tag;
+						input.dispatchEvent(new Event('input', { bubbles: true }));
+						input.dispatchEvent(new Event('change', { bubbles: true }));
+						
+						// Enter 키 이벤트 발생
+						const enterEvent = new KeyboardEvent('keydown', {
+							key: 'Enter',
+							code: 'Enter',
+							keyCode: 13,
+							which: 13,
+							bubbles: true,
+							cancelable: true
+						});
+						input.dispatchEvent(enterEvent);
+						
+						// keyup도 발생
+						input.dispatchEvent(new KeyboardEvent('keyup', {
+							key: 'Enter',
+							keyCode: 13,
+							bubbles: true
+						}));
+						
+						// 약간의 딜레이 후 입력란 비우기 (다음 태그 준비)
+						setTimeout(() => { input.value = ''; }, 100);
+						
+						return true;
+					}
+					return false;
+				}`, tag).Bool()
+
+				if success {
+					fmt.Printf("    태그 추가됨: %s\n", tag)
+				} else {
+					fmt.Printf("    ⚠️ 태그 추가 실패: %s\n", tag)
+				}
+				time.Sleep(800 * time.Millisecond)
+			}
+			fmt.Println("    태그 입력 완료")
+		} else {
+			fmt.Println("    ⚠️ 태그 입력란을 찾을 수 없음 - JavaScript로 시도")
+			
+			// JavaScript fallback
+			for _, tag := range tags {
+				page.MustEval(`(tag) => {
+					const inputs = document.querySelectorAll('input');
+					for (const input of inputs) {
+						const placeholder = input.placeholder || '';
+						if (placeholder.includes('태그') || placeholder.includes('Tag') || placeholder.includes('tag')) {
+							input.scrollIntoView();
+							input.focus();
+							input.value = tag;
+							input.dispatchEvent(new Event('input', { bubbles: true }));
+							
+							// Enter 키 시뮬레이션
+							const enterEvent = new KeyboardEvent('keydown', {
+								key: 'Enter',
+								code: 'Enter',
+								keyCode: 13,
+								which: 13,
+								bubbles: true
+							});
+							input.dispatchEvent(enterEvent);
+							return true;
+						}
+					}
+					return false;
+				}`, tag)
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
 		time.Sleep(1 * time.Second)
 	}
 

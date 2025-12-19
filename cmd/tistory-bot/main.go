@@ -166,23 +166,23 @@ var postCmd = &cobra.Command{
 		case "lotto-predict":
 			fmt.Println("🔮 로또 예측번호 생성 중...")
 			c := collector.NewLottoCollector()
-			
+
 			// 최근 20회차 분석
 			results, err := c.GetRecentResults(ctx, 20)
 			if err != nil {
 				fmt.Printf("분석 실패: %v\n", err)
 				os.Exit(1)
 			}
-			
+
 			// 핫/콜드 번호 분석
 			hotNumbers, coldNumbers := c.AnalyzeNumbers(results)
-			
+
 			// 예측 번호 생성
 			predictions := c.GeneratePredictions(hotNumbers, coldNumbers)
-			
+
 			// 다음 회차 번호
 			nextRound := results[0].DrawNo + 1
-			
+
 			post = c.GeneratePredictionPost(nextRound, predictions, hotNumbers, coldNumbers)
 
 		case "weather":
