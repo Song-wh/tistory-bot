@@ -70,42 +70,19 @@ func NewGolfCollector(coupangID string) *GolfCollector {
 	}
 }
 
-// getDefaultRegions 기본 지역 및 골프장 데이터
+// getDefaultRegions 전국 주요 지역 및 골프장 데이터
 func getDefaultRegions() []GolfRegion {
 	return []GolfRegion{
+		// ===== 수도권 =====
 		{
 			Name: "용인",
 			City: "경기도",
 			Lat:  37.2411,
 			Lon:  127.1776,
 			GolfCourses: []GolfCourse{
-				{
-					Name:     "레이크사이드CC",
-					Address:  "경기도 용인시 처인구 양지면",
-					Phone:    "031-338-0001",
-					GreenFee: "주중 18만원 / 주말 25만원",
-					Holes:    27,
-					Features: []string{"명문 골프장", "아름다운 호수 뷰", "최고급 시설"},
-					Rating:   4.7,
-				},
-				{
-					Name:     "용인CC",
-					Address:  "경기도 용인시 처인구 원삼면",
-					Phone:    "031-333-0001",
-					GreenFee: "주중 15만원 / 주말 22만원",
-					Holes:    18,
-					Features: []string{"접근성 좋음", "깔끔한 코스", "가성비"},
-					Rating:   4.3,
-				},
-				{
-					Name:     "양지파인리조트CC",
-					Address:  "경기도 용인시 처인구 양지면",
-					Phone:    "031-338-2001",
-					GreenFee: "주중 16만원 / 주말 23만원",
-					Holes:    18,
-					Features: []string{"리조트 연계", "스키장 인접", "사계절 운영"},
-					Rating:   4.5,
-				},
+				{Name: "레이크사이드CC", Address: "경기도 용인시 처인구", GreenFee: "주중 18만원 / 주말 25만원", Features: []string{"명문 골프장", "호수 뷰"}, Rating: 4.7},
+				{Name: "용인CC", Address: "경기도 용인시 처인구", GreenFee: "주중 15만원 / 주말 22만원", Features: []string{"접근성 좋음", "가성비"}, Rating: 4.3},
+				{Name: "양지파인리조트CC", Address: "경기도 용인시 처인구", GreenFee: "주중 16만원 / 주말 23만원", Features: []string{"리조트 연계", "사계절"}, Rating: 4.5},
 			},
 		},
 		{
@@ -114,24 +91,8 @@ func getDefaultRegions() []GolfRegion {
 			Lat:  37.2719,
 			Lon:  127.4348,
 			GolfCourses: []GolfCourse{
-				{
-					Name:     "블랙스톤CC",
-					Address:  "경기도 이천시 모가면",
-					Phone:    "031-645-8000",
-					GreenFee: "주중 20만원 / 주말 30만원",
-					Holes:    27,
-					Features: []string{"프리미엄 골프장", "넓은 페어웨이", "VIP 서비스"},
-					Rating:   4.8,
-				},
-				{
-					Name:     "사우스스프링스CC",
-					Address:  "경기도 이천시 장호원읍",
-					Phone:    "031-641-5000",
-					GreenFee: "주중 17만원 / 주말 25만원",
-					Holes:    27,
-					Features: []string{"자연친화적", "전략적 코스", "좋은 관리 상태"},
-					Rating:   4.6,
-				},
+				{Name: "블랙스톤CC", Address: "경기도 이천시", GreenFee: "주중 20만원 / 주말 30만원", Features: []string{"프리미엄", "VIP 서비스"}, Rating: 4.8},
+				{Name: "사우스스프링스CC", Address: "경기도 이천시", GreenFee: "주중 17만원 / 주말 25만원", Features: []string{"자연친화적", "좋은 관리"}, Rating: 4.6},
 			},
 		},
 		{
@@ -140,76 +101,154 @@ func getDefaultRegions() []GolfRegion {
 			Lat:  37.7599,
 			Lon:  126.7800,
 			GolfCourses: []GolfCourse{
-				{
-					Name:     "서원밸리CC",
-					Address:  "경기도 파주시 광탄면",
-					Phone:    "031-940-3000",
-					GreenFee: "주중 14만원 / 주말 20만원",
-					Holes:    18,
-					Features: []string{"서울 근교", "빠른 접근성", "대중적 인기"},
-					Rating:   4.2,
-				},
-				{
-					Name:     "파주CC",
-					Address:  "경기도 파주시 법원읍",
-					Phone:    "031-958-9000",
-					GreenFee: "주중 13만원 / 주말 19만원",
-					Holes:    18,
-					Features: []string{"합리적 가격", "초보자 친화적", "넓은 주차장"},
-					Rating:   4.0,
-				},
+				{Name: "서원밸리CC", Address: "경기도 파주시", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"서울 근교", "접근성"}, Rating: 4.2},
+				{Name: "파주CC", Address: "경기도 파주시", GreenFee: "주중 13만원 / 주말 19만원", Features: []string{"합리적 가격", "초보자 친화"}, Rating: 4.0},
+			},
+		},
+		// ===== 강원도 =====
+		{
+			Name: "춘천",
+			City: "강원도",
+			Lat:  37.8813,
+			Lon:  127.7300,
+			GolfCourses: []GolfCourse{
+				{Name: "라데나CC", Address: "강원도 춘천시", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"청정 자연", "시원한 공기"}, Rating: 4.4},
+				{Name: "춘천레이크CC", Address: "강원도 춘천시", GreenFee: "주중 12만원 / 주말 18만원", Features: []string{"호수 전경", "힐링"}, Rating: 4.2},
 			},
 		},
 		{
-			Name: "여주",
-			City: "경기도",
-			Lat:  37.2986,
-			Lon:  127.6375,
+			Name: "강릉",
+			City: "강원도",
+			Lat:  37.7519,
+			Lon:  128.8761,
 			GolfCourses: []GolfCourse{
-				{
-					Name:     "페럼CC",
-					Address:  "경기도 여주시 강천면",
-					Phone:    "031-881-8000",
-					GreenFee: "주중 18만원 / 주말 26만원",
-					Holes:    27,
-					Features: []string{"넓은 페어웨이", "아름다운 경관", "최신 시설"},
-					Rating:   4.6,
-				},
-				{
-					Name:     "세종CC",
-					Address:  "경기도 여주시 산북면",
-					Phone:    "031-880-7000",
-					GreenFee: "주중 15만원 / 주말 22만원",
-					Holes:    18,
-					Features: []string{"전략적 코스", "도전적 레이아웃", "맛있는 식사"},
-					Rating:   4.4,
-				},
+				{Name: "파인비치CC", Address: "강원도 강릉시", GreenFee: "주중 16만원 / 주말 24만원", Features: []string{"동해 바다 뷰", "리조트"}, Rating: 4.6},
+				{Name: "강릉CC", Address: "강원도 강릉시", GreenFee: "주중 13만원 / 주말 19만원", Features: []string{"시원한 바람", "자연경관"}, Rating: 4.3},
 			},
 		},
 		{
-			Name: "포천",
-			City: "경기도",
-			Lat:  37.8949,
-			Lon:  127.2003,
+			Name: "원주",
+			City: "강원도",
+			Lat:  37.3422,
+			Lon:  127.9202,
 			GolfCourses: []GolfCourse{
-				{
-					Name:     "아도니스CC",
-					Address:  "경기도 포천시 신북면",
-					Phone:    "031-535-8000",
-					GreenFee: "주중 13만원 / 주말 18만원",
-					Holes:    18,
-					Features: []string{"자연 속 힐링", "시원한 공기", "가성비 좋음"},
-					Rating:   4.1,
-				},
-				{
-					Name:     "포천힐스CC",
-					Address:  "경기도 포천시 이동면",
-					Phone:    "031-532-5000",
-					GreenFee: "주중 12만원 / 주말 17만원",
-					Holes:    18,
-					Features: []string{"합리적 가격", "깨끗한 시설", "친절한 서비스"},
-					Rating:   4.0,
-				},
+				{Name: "오크밸리CC", Address: "강원도 원주시", GreenFee: "주중 15만원 / 주말 22만원", Features: []string{"리조트 연계", "스키장"}, Rating: 4.5},
+				{Name: "쏠비치CC", Address: "강원도 원주시", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"깔끔한 코스", "편의시설"}, Rating: 4.3},
+			},
+		},
+		// ===== 충청도 =====
+		{
+			Name: "천안",
+			City: "충청남도",
+			Lat:  36.8151,
+			Lon:  127.1139,
+			GolfCourses: []GolfCourse{
+				{Name: "우정힐스CC", Address: "충남 천안시", GreenFee: "주중 13만원 / 주말 19만원", Features: []string{"KTX 접근성", "가성비"}, Rating: 4.2},
+				{Name: "천안상록CC", Address: "충남 천안시", GreenFee: "주중 12만원 / 주말 17만원", Features: []string{"합리적 가격", "넓은 코스"}, Rating: 4.0},
+			},
+		},
+		{
+			Name: "대전",
+			City: "대전광역시",
+			Lat:  36.3504,
+			Lon:  127.3845,
+			GolfCourses: []GolfCourse{
+				{Name: "롯데스카이힐CC", Address: "대전광역시", GreenFee: "주중 14만원 / 주말 21만원", Features: []string{"도심 근처", "편리한 접근"}, Rating: 4.3},
+				{Name: "유성CC", Address: "대전광역시 유성구", GreenFee: "주중 15만원 / 주말 22만원", Features: []string{"온천 연계", "명문"}, Rating: 4.5},
+			},
+		},
+		// ===== 전라도 =====
+		{
+			Name: "광주",
+			City: "광주광역시",
+			Lat:  35.1595,
+			Lon:  126.8526,
+			GolfCourses: []GolfCourse{
+				{Name: "무등산CC", Address: "광주광역시", GreenFee: "주중 13만원 / 주말 19만원", Features: []string{"무등산 전경", "명문"}, Rating: 4.4},
+				{Name: "광주CC", Address: "광주광역시", GreenFee: "주중 12만원 / 주말 17만원", Features: []string{"도심 접근", "가성비"}, Rating: 4.1},
+			},
+		},
+		{
+			Name: "전주",
+			City: "전라북도",
+			Lat:  35.8242,
+			Lon:  127.1480,
+			GolfCourses: []GolfCourse{
+				{Name: "전주신시가지CC", Address: "전북 전주시", GreenFee: "주중 12만원 / 주말 17만원", Features: []string{"신시가지", "편의시설"}, Rating: 4.2},
+				{Name: "라온CC", Address: "전북 완주군", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"자연경관", "코스 관리"}, Rating: 4.4},
+			},
+		},
+		{
+			Name: "여수",
+			City: "전라남도",
+			Lat:  34.7604,
+			Lon:  127.6622,
+			GolfCourses: []GolfCourse{
+				{Name: "디오션CC", Address: "전남 여수시", GreenFee: "주중 18만원 / 주말 28만원", Features: []string{"바다 뷰", "프리미엄"}, Rating: 4.7},
+				{Name: "여수경도CC", Address: "전남 여수시", GreenFee: "주중 15만원 / 주말 22만원", Features: []string{"섬 골프장", "경치"}, Rating: 4.5},
+			},
+		},
+		// ===== 경상도 =====
+		{
+			Name: "부산",
+			City: "부산광역시",
+			Lat:  35.1796,
+			Lon:  129.0756,
+			GolfCourses: []GolfCourse{
+				{Name: "아시아드CC", Address: "부산광역시 강서구", GreenFee: "주중 15만원 / 주말 23만원", Features: []string{"도심 접근", "야간 라운딩"}, Rating: 4.4},
+				{Name: "기장CC", Address: "부산광역시 기장군", GreenFee: "주중 14만원 / 주말 21만원", Features: []string{"바다 근처", "리조트"}, Rating: 4.3},
+			},
+		},
+		{
+			Name: "대구",
+			City: "대구광역시",
+			Lat:  35.8714,
+			Lon:  128.6014,
+			GolfCourses: []GolfCourse{
+				{Name: "대구CC", Address: "대구광역시 달성군", GreenFee: "주중 14만원 / 주말 21만원", Features: []string{"명문", "역사"}, Rating: 4.5},
+				{Name: "팔공CC", Address: "대구광역시 동구", GreenFee: "주중 13만원 / 주말 19만원", Features: []string{"팔공산", "자연"}, Rating: 4.2},
+			},
+		},
+		{
+			Name: "경주",
+			City: "경상북도",
+			Lat:  35.8562,
+			Lon:  129.2247,
+			GolfCourses: []GolfCourse{
+				{Name: "블루원CC", Address: "경북 경주시", GreenFee: "주중 16만원 / 주말 24만원", Features: []string{"리조트", "관광 연계"}, Rating: 4.6},
+				{Name: "경주CC", Address: "경북 경주시", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"역사 도시", "명문"}, Rating: 4.4},
+			},
+		},
+		{
+			Name: "거제",
+			City: "경상남도",
+			Lat:  34.8806,
+			Lon:  128.6211,
+			GolfCourses: []GolfCourse{
+				{Name: "거제씨클럽CC", Address: "경남 거제시", GreenFee: "주중 17만원 / 주말 26만원", Features: []string{"바다 뷰", "프리미엄"}, Rating: 4.7},
+				{Name: "거제CC", Address: "경남 거제시", GreenFee: "주중 14만원 / 주말 20만원", Features: []string{"남해 전경", "휴양"}, Rating: 4.4},
+			},
+		},
+		// ===== 제주도 =====
+		{
+			Name: "제주",
+			City: "제주특별자치도",
+			Lat:  33.4996,
+			Lon:  126.5312,
+			GolfCourses: []GolfCourse{
+				{Name: "나인브릿지CC", Address: "제주도 서귀포시", GreenFee: "주중 35만원 / 주말 45만원", Features: []string{"세계적 명문", "한라산 뷰"}, Rating: 4.9},
+				{Name: "핀크스CC", Address: "제주도 서귀포시", GreenFee: "주중 25만원 / 주말 35만원", Features: []string{"PGA 투어", "프리미엄"}, Rating: 4.8},
+				{Name: "래비드리조트CC", Address: "제주도 제주시", GreenFee: "주중 18만원 / 주말 28만원", Features: []string{"리조트", "바다 전경"}, Rating: 4.5},
+			},
+		},
+		{
+			Name: "서귀포",
+			City: "제주특별자치도",
+			Lat:  33.2541,
+			Lon:  126.5601,
+			GolfCourses: []GolfCourse{
+				{Name: "해비치CC", Address: "제주도 서귀포시", GreenFee: "주중 22만원 / 주말 32만원", Features: []string{"호텔 연계", "고급"}, Rating: 4.7},
+				{Name: "오라CC", Address: "제주도 서귀포시", GreenFee: "주중 20만원 / 주말 28만원", Features: []string{"한라산 뷰", "자연"}, Rating: 4.6},
 			},
 		},
 	}
