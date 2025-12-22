@@ -468,7 +468,7 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 			return nil
 		}
 		hotNumbers, coldNumbers := c.AnalyzeNumbers(results)
-		predictions := c.GeneratePredictions(hotNumbers, coldNumbers)
+		predictions := c.GeneratePredictions(hotNumbers, coldNumbers, acc.Name)
 		nextRound := results[0].DrawNo + 1
 		post = c.GeneratePredictionPost(nextRound, predictions, hotNumbers, coldNumbers)
 

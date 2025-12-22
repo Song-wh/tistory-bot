@@ -244,13 +244,17 @@ func (l *LottoCollector) AnalyzeNumbers(results []LottoResult) (hotNumbers []int
 	return hotNumbers, coldNumbers
 }
 
-// GeneratePredictions 예측 번호 생성 (5세트)
-func (l *LottoCollector) GeneratePredictions(hotNumbers, coldNumbers []int) []LottoPrediction {
-	// 날짜 기반 시드 (같은 날 같은 예측)
+// GeneratePredictions 예측 번호 생성 (5세트) - 계정별 다른 번호
+func (l *LottoCollector) GeneratePredictions(hotNumbers, coldNumbers []int, accountName string) []LottoPrediction {
+	// 날짜 + 계정 기반 시드 (같은 날 같은 계정은 같은 예측, 다른 계정은 다른 예측)
 	today := time.Now().Format("2006-01-02")
 	seed := int64(0)
 	for _, c := range today {
 		seed += int64(c)
+	}
+	// 계정 이름도 시드에 추가
+	for _, c := range accountName {
+		seed += int64(c) * 7 // 다른 가중치 적용
 	}
 	rng := rand.New(rand.NewSource(seed))
 
