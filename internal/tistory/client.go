@@ -213,29 +213,21 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 		return nil, fmt.Errorf("에디터 페이지 열기 실패: %w", err)
 	}
 
+	// 브라우저 다이얼로그(confirm/alert) 자동 처리 - 페이지 로드 전에 설정
+	fmt.Println("  🔍 임시저장 알림 자동 처리 설정...")
+	go page.EachEvent(func(e *proto.PageJavascriptDialogOpening) {
+		fmt.Printf("  📢 다이얼로그 감지: %s\n", e.Message)
+		// "취소" 선택 (Accept: false)
+		_ = proto.PageHandleJavaScriptDialog{Accept: false}.Call(page)
+		fmt.Println("  ✅ 다이얼로그 취소 완료")
+	})()
+
 	if err := page.WaitLoad(); err != nil {
 		return nil, fmt.Errorf("페이지 로딩 실패: %w", err)
 	}
 
 	time.Sleep(3 * time.Second)
-
-	// 임시저장 알림창 처리 (있으면 닫기)
-	page.MustEval(`() => {
-		// 모든 버튼에서 "사용 안함", "취소", "닫기" 텍스트 찾기
-		const buttons = document.querySelectorAll('button');
-		for (const btn of buttons) {
-			const text = (btn.textContent || '').trim();
-			if (text.includes('사용 안함') || text.includes('사용안함') || 
-			    text === '취소' || text === '닫기' || text === '아니오') {
-				btn.click();
-				console.log('Alert dismissed:', text);
-				return true;
-			}
-		}
-		return false;
-	}`)
-
-	time.Sleep(1 * time.Second)
+	fmt.Println("  ✅ 페이지 로딩 완료")
 
 	// 제목 입력
 	titleInput, err := page.Timeout(10 * time.Second).Element("#post-title-inp")
@@ -544,4 +536,3 @@ func (c *Client) TestLogin(ctx context.Context) error {
 
 	return c.Login(ctx)
 }
-
