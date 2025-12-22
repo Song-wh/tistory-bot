@@ -64,14 +64,14 @@ func (c *ErrorArchiveCollector) GetStackOverflowErrors(ctx context.Context, tag 
 
 	var result struct {
 		Items []struct {
-			Title        string   `json:"title"`
-			Body         string   `json:"body"`
-			Tags         []string `json:"tags"`
-			Score        int      `json:"score"`
-			ViewCount    int      `json:"view_count"`
-			Link         string   `json:"link"`
-			IsAnswered   bool     `json:"is_answered"`
-			AnswerCount  int      `json:"answer_count"`
+			Title       string   `json:"title"`
+			Body        string   `json:"body"`
+			Tags        []string `json:"tags"`
+			Score       int      `json:"score"`
+			ViewCount   int      `json:"view_count"`
+			Link        string   `json:"link"`
+			IsAnswered  bool     `json:"is_answered"`
+			AnswerCount int      `json:"answer_count"`
 		} `json:"items"`
 	}
 
@@ -148,7 +148,7 @@ func (c *ErrorArchiveCollector) GetGitHubIssues(ctx context.Context, language st
 	var errors []ErrorEntry
 	for _, item := range result.Items {
 		errorMsg := c.extractErrorMessage(item.Title, item.Body)
-		
+
 		var tags []string
 		for _, label := range item.Labels {
 			tags = append(tags, label.Name)
@@ -700,4 +700,3 @@ func formatViews(views int) string {
 	}
 	return fmt.Sprintf("%d", views)
 }
-
