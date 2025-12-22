@@ -95,100 +95,72 @@ func (c *CoupangCollector) GetGoldboxProducts(ctx context.Context, limit int) ([
 		return nil, fmt.Errorf("페이지 로딩 실패: %w", err)
 	}
 
-	// 추가 대기 (동적 컨텐츠)
-	time.Sleep(3 * time.Second)
+	// 추가 대기 (리다이렉트 + 동적 컨텐츠)
+	fmt.Println("    ⏳ 페이지 로딩 대기...")
+	time.Sleep(5 * time.Second)
 
 	// 스크롤 다운해서 더 많은 상품 로딩
 	page.MustEval(`() => window.scrollTo(0, 1000)`)
+	time.Sleep(2 * time.Second)
+	page.MustEval(`() => window.scrollTo(0, 2000)`)
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("    📦 상품 정보 추출 중...")
 
-	// JavaScript로 상품 정보 추출
+	// JavaScript로 상품 정보 추출 (링크 기반)
 	result := page.MustEval(`(limit) => {
 		const products = [];
 		
-		// 골드박스 상품 셀렉터들
-		const items = document.querySelectorAll('.product-item, .baby-product-wrap, [class*="product-"]');
+		// 상품 링크로 찾기
+		const links = document.querySelectorAll('a[href*="/vp/products/"]');
 		
-		for (const item of items) {
+		for (const link of links) {
 			if (products.length >= limit) break;
 			
-			try {
-				// 제목
-				let title = '';
-				const nameEl = item.querySelector('.name, .product-name, [class*="name"]');
-				if (nameEl) title = nameEl.textContent.trim();
-				if (!title) {
-					const linkEl = item.querySelector('a');
-					if (linkEl) title = linkEl.getAttribute('title') || '';
+			const title = link.title || link.textContent.trim().slice(0, 100);
+			if (!title || title.length < 5) continue;
+			
+			let productUrl = link.href || '';
+			let productId = '';
+			const match = productUrl.match(/\/products\/(\d+)/);
+			if (match) productId = match[1];
+			
+			// 이미지
+			let imageUrl = '';
+			const imgEl = link.querySelector('img');
+			if (imgEl) {
+				imageUrl = imgEl.src || imgEl.getAttribute('data-src') || '';
+				if (imageUrl && !imageUrl.startsWith('http')) {
+					imageUrl = 'https:' + imageUrl;
 				}
-				if (!title) continue;
-				
-				// 가격
-				let price = 0;
-				const priceEl = item.querySelector('.price-value, .sale-price, [class*="price"] strong, [class*="price"]');
-				if (priceEl) {
-					const priceText = priceEl.textContent.replace(/[^0-9]/g, '');
-					price = parseInt(priceText) || 0;
-				}
-				
-				// 원가
-				let origPrice = 0;
-				const origEl = item.querySelector('.base-price, .origin-price, del');
-				if (origEl) {
-					const origText = origEl.textContent.replace(/[^0-9]/g, '');
-					origPrice = parseInt(origText) || 0;
-				}
-				
-				// 할인율
-				let discountRate = 0;
-				const discountEl = item.querySelector('.discount-rate, .discount-percentage, [class*="discount"]');
-				if (discountEl) {
-					const discountText = discountEl.textContent.match(/(\d+)/);
-					if (discountText) discountRate = parseInt(discountText[1]);
-				}
-				if (!discountRate && origPrice > 0 && price > 0) {
-					discountRate = Math.round((1 - price / origPrice) * 100);
-				}
-				
-				// 이미지
-				let imageUrl = '';
-				const imgEl = item.querySelector('img');
-				if (imgEl) {
-					imageUrl = imgEl.src || imgEl.getAttribute('data-src') || '';
-					if (imageUrl && !imageUrl.startsWith('http')) {
-						imageUrl = 'https:' + imageUrl;
-					}
-				}
-				
-				// 상품 URL
-				let productUrl = '';
-				let productId = '';
-				const linkEl = item.querySelector('a');
-				if (linkEl) {
-					productUrl = linkEl.href || '';
-					const match = productUrl.match(/\/products\/(\d+)/);
-					if (match) productId = match[1];
-				}
-				
-				// 로켓배송 여부
-				const isRocket = item.querySelector('[class*="rocket"], .badge-rocket') !== null;
-				
-				products.push({
-					title: title,
-					price: price,
-					origPrice: origPrice,
-					discountRate: discountRate,
-					imageUrl: imageUrl,
-					productUrl: productUrl,
-					productId: productId,
-					isRocket: isRocket,
-					category: '골드박스'
-				});
-			} catch (e) {
-				console.error('상품 파싱 에러:', e);
 			}
+			
+			// 가격 (텍스트에서 추출)
+			const text = link.textContent || '';
+			const priceMatch = text.match(/(\d{1,3}(?:,\d{3})+)원/);
+			let price = 0;
+			if (priceMatch) {
+				price = parseInt(priceMatch[1].replace(/,/g, '')) || 0;
+			}
+			
+			// 할인율
+			let discountRate = 0;
+			const discountMatch = text.match(/(\d+)%/);
+			if (discountMatch) {
+				discountRate = parseInt(discountMatch[1]) || 0;
+			}
+			
+			products.push({
+				title: title.replace(/\s+/g, ' ').trim(),
+				price: price,
+				origPrice: 0,
+				discountRate: discountRate,
+				imageUrl: imageUrl,
+				productUrl: productUrl,
+				productId: productId,
+				isRocket: true,
+				category: '골드박스'
+			});
 		}
 		
 		return products;
@@ -197,7 +169,7 @@ func (c *CoupangCollector) GetGoldboxProducts(ctx context.Context, limit int) ([
 	// 결과 파싱
 	var products []CoupangProduct
 	arr := result.Arr()
-	
+
 	for _, item := range arr {
 		m := item.Map()
 		product := CoupangProduct{
@@ -211,7 +183,7 @@ func (c *CoupangCollector) GetGoldboxProducts(ctx context.Context, limit int) ([
 			IsRocket:     m["isRocket"].Bool(),
 			Category:     m["category"].Str(),
 		}
-		
+
 		if product.Title != "" && product.Price > 0 {
 			products = append(products, product)
 		}
