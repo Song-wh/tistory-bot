@@ -12,31 +12,31 @@ import (
 
 // GolfCollector 골프 + 날씨 수집기
 type GolfCollector struct {
-	client       *http.Client
-	coupangID    string
-	regions      []GolfRegion
+	client    *http.Client
+	coupangID string
+	regions   []GolfRegion
 }
 
 // GolfRegion 지역 정보
 type GolfRegion struct {
-	Name       string       `json:"name"`        // 지역명 (예: 용인)
-	City       string       `json:"city"`        // 시/도 (예: 경기도)
-	Lat        float64      `json:"lat"`         // 위도
-	Lon        float64      `json:"lon"`         // 경도
+	Name        string       `json:"name"`         // 지역명 (예: 용인)
+	City        string       `json:"city"`         // 시/도 (예: 경기도)
+	Lat         float64      `json:"lat"`          // 위도
+	Lon         float64      `json:"lon"`          // 경도
 	GolfCourses []GolfCourse `json:"golf_courses"` // 골프장 목록
 }
 
 // GolfCourse 골프장 정보
 type GolfCourse struct {
-	Name        string   `json:"name"`         // 골프장명
-	Address     string   `json:"address"`      // 주소
-	Phone       string   `json:"phone"`        // 전화번호
-	GreenFee    string   `json:"green_fee"`    // 그린피
-	Holes       int      `json:"holes"`        // 홀 수
-	Features    []string `json:"features"`     // 특징
-	Rating      float64  `json:"rating"`       // 평점
-	ImageURL    string   `json:"image_url"`    // 이미지
-	BookingURL  string   `json:"booking_url"`  // 예약 URL
+	Name       string   `json:"name"`        // 골프장명
+	Address    string   `json:"address"`     // 주소
+	Phone      string   `json:"phone"`       // 전화번호
+	GreenFee   string   `json:"green_fee"`   // 그린피
+	Holes      int      `json:"holes"`       // 홀 수
+	Features   []string `json:"features"`    // 특징
+	Rating     float64  `json:"rating"`      // 평점
+	ImageURL   string   `json:"image_url"`   // 이미지
+	BookingURL string   `json:"booking_url"` // 예약 URL
 }
 
 // GolfWeather 골프 날씨 정보
@@ -48,8 +48,9 @@ type GolfWeather struct {
 	WindSpeed   float64 `json:"wind_speed"`
 	Description string  `json:"description"`
 	Icon        string  `json:"icon"`
-	GolfIndex   int     `json:"golf_index"`    // 골프 지수 (0-100)
-	GolfGrade   string  `json:"golf_grade"`    // 등급 (최적/좋음/보통/비추)
+	GolfIndex   int     `json:"golf_index"`   // 골프 지수 (0-100)
+	GolfGrade   string  `json:"golf_grade"`   // 등급 (최적/좋음/보통/비추)
+	GolfComment string  `json:"golf_comment"` // 한줄평 (점수 이유)
 }
 
 // GolfProduct 골프 용품 (쿠팡 파트너스)
@@ -64,9 +65,9 @@ type GolfProduct struct {
 // NewGolfCollector 골프 수집기 생성
 func NewGolfCollector(coupangID string) *GolfCollector {
 	return &GolfCollector{
-		client: &http.Client{Timeout: 30 * time.Second},
+		client:    &http.Client{Timeout: 30 * time.Second},
 		coupangID: coupangID,
-		regions: getDefaultRegions(),
+		regions:   getDefaultRegions(),
 	}
 }
 
@@ -257,25 +258,25 @@ func getDefaultRegions() []GolfRegion {
 // GetGolfWeather 지역별 골프 날씨 정보 조회
 func (g *GolfCollector) GetGolfWeather(ctx context.Context, region GolfRegion) (*GolfWeather, error) {
 	// OpenWeatherMap API (무료)
-	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=demo&units=metric&lang=kr", 
+	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?lat=%f&lon=%f&appid=demo&units=metric&lang=kr",
 		region.Lat, region.Lon)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	resp, err := g.client.Do(req)
 	if err != nil {
 		// API 실패 시 시뮬레이션 데이터 반환
 		return g.simulateWeather(region), nil
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != 200 {
 		return g.simulateWeather(region), nil
 	}
-	
+
 	var data struct {
 		Main struct {
 			Temp      float64 `json:"temp"`
@@ -290,11 +291,11 @@ func (g *GolfCollector) GetGolfWeather(ctx context.Context, region GolfRegion) (
 			Icon        string `json:"icon"`
 		} `json:"weather"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return g.simulateWeather(region), nil
 	}
-	
+
 	weather := &GolfWeather{
 		Region:      region.Name,
 		Temperature: data.Main.Temp,
@@ -302,27 +303,27 @@ func (g *GolfCollector) GetGolfWeather(ctx context.Context, region GolfRegion) (
 		Humidity:    data.Main.Humidity,
 		WindSpeed:   data.Wind.Speed,
 	}
-	
+
 	if len(data.Weather) > 0 {
 		weather.Description = data.Weather[0].Description
 		weather.Icon = data.Weather[0].Icon
 	}
-	
+
 	// 골프 지수 계산
-	weather.GolfIndex, weather.GolfGrade = g.calculateGolfIndex(weather)
-	
+	weather.GolfIndex, weather.GolfGrade, weather.GolfComment = g.calculateGolfIndex(weather)
+
 	return weather, nil
 }
 
 // simulateWeather 날씨 시뮬레이션 (API 실패 시)
 func (g *GolfCollector) simulateWeather(region GolfRegion) *GolfWeather {
 	rand.Seed(time.Now().UnixNano())
-	
+
 	// 계절에 따른 온도 조정
 	month := time.Now().Month()
 	var baseTemp float64
 	var descriptions []string
-	
+
 	switch {
 	case month >= 3 && month <= 5: // 봄
 		baseTemp = 15 + rand.Float64()*10
@@ -337,7 +338,7 @@ func (g *GolfCollector) simulateWeather(region GolfRegion) *GolfWeather {
 		baseTemp = -2 + rand.Float64()*10
 		descriptions = []string{"맑음", "흐림", "눈", "추움"}
 	}
-	
+
 	weather := &GolfWeather{
 		Region:      region.Name,
 		Temperature: baseTemp,
@@ -346,23 +347,23 @@ func (g *GolfCollector) simulateWeather(region GolfRegion) *GolfWeather {
 		WindSpeed:   1 + rand.Float64()*6,
 		Description: descriptions[rand.Intn(len(descriptions))],
 	}
-	
-	weather.GolfIndex, weather.GolfGrade = g.calculateGolfIndex(weather)
-	
+
+	weather.GolfIndex, weather.GolfGrade, weather.GolfComment = g.calculateGolfIndex(weather)
+
 	return weather
 }
 
 // simulateTomorrowWeather 내일 날씨 예측 (예보)
 func (g *GolfCollector) simulateTomorrowWeather(region GolfRegion) *GolfWeather {
 	rand.Seed(time.Now().UnixNano() + int64(region.Lat*1000))
-	
+
 	// 내일 날씨 예측 (약간의 변동 추가)
 	tomorrow := time.Now().AddDate(0, 0, 1)
 	month := tomorrow.Month()
-	
+
 	var baseTemp float64
 	var descriptions []string
-	
+
 	switch {
 	case month >= 3 && month <= 5: // 봄
 		baseTemp = 14 + rand.Float64()*12
@@ -377,7 +378,7 @@ func (g *GolfCollector) simulateTomorrowWeather(region GolfRegion) *GolfWeather 
 		baseTemp = -3 + rand.Float64()*12
 		descriptions = []string{"맑음 예상", "흐림 예상", "눈 가능성", "추울 것"}
 	}
-	
+
 	weather := &GolfWeather{
 		Region:      region.Name,
 		Temperature: baseTemp,
@@ -386,57 +387,76 @@ func (g *GolfCollector) simulateTomorrowWeather(region GolfRegion) *GolfWeather 
 		WindSpeed:   1 + rand.Float64()*7,
 		Description: descriptions[rand.Intn(len(descriptions))],
 	}
-	
-	weather.GolfIndex, weather.GolfGrade = g.calculateGolfIndex(weather)
-	
+
+	weather.GolfIndex, weather.GolfGrade, weather.GolfComment = g.calculateGolfIndex(weather)
+
 	return weather
 }
 
 // calculateGolfIndex 골프 지수 계산
-func (g *GolfCollector) calculateGolfIndex(w *GolfWeather) (int, string) {
+func (g *GolfCollector) calculateGolfIndex(w *GolfWeather) (int, string, string) {
 	score := 100
-	
+	var reasons []string
+
 	// 온도 점수 (15-25도가 최적)
 	if w.Temperature < 5 {
 		score -= 40
+		reasons = append(reasons, fmt.Sprintf("기온 %.0f°C로 많이 추움", w.Temperature))
 	} else if w.Temperature < 10 {
 		score -= 20
+		reasons = append(reasons, fmt.Sprintf("기온 %.0f°C로 쌀쌀함", w.Temperature))
 	} else if w.Temperature < 15 {
 		score -= 5
+		reasons = append(reasons, "약간 선선한 날씨")
 	} else if w.Temperature > 35 {
 		score -= 35
+		reasons = append(reasons, fmt.Sprintf("기온 %.0f°C로 너무 더움", w.Temperature))
 	} else if w.Temperature > 30 {
 		score -= 15
+		reasons = append(reasons, fmt.Sprintf("기온 %.0f°C로 더움", w.Temperature))
 	} else if w.Temperature > 25 {
 		score -= 5
+		reasons = append(reasons, "약간 더운 날씨")
+	} else {
+		reasons = append(reasons, fmt.Sprintf("기온 %.0f°C로 쾌적", w.Temperature))
 	}
-	
+
 	// 바람 점수 (강풍 감점)
 	if w.WindSpeed > 10 {
 		score -= 30
+		reasons = append(reasons, fmt.Sprintf("강풍 %.1fm/s 주의!", w.WindSpeed))
 	} else if w.WindSpeed > 7 {
 		score -= 15
+		reasons = append(reasons, fmt.Sprintf("바람 %.1fm/s로 강함", w.WindSpeed))
 	} else if w.WindSpeed > 5 {
 		score -= 5
+		reasons = append(reasons, "바람 약간 있음")
 	}
-	
+
 	// 습도 점수
 	if w.Humidity > 85 {
 		score -= 15
+		reasons = append(reasons, fmt.Sprintf("습도 %d%%로 매우 높음", w.Humidity))
 	} else if w.Humidity > 70 {
 		score -= 5
+		reasons = append(reasons, "습도 다소 높음")
 	}
-	
+
 	// 날씨 설명에 따른 조정
 	desc := strings.ToLower(w.Description)
 	if strings.Contains(desc, "비") || strings.Contains(desc, "rain") || strings.Contains(desc, "소나기") {
 		score -= 40
+		reasons = append(reasons, "비 예상 ☔")
 	} else if strings.Contains(desc, "눈") || strings.Contains(desc, "snow") {
 		score -= 50
+		reasons = append(reasons, "눈 예상 ❄️")
 	} else if strings.Contains(desc, "흐림") || strings.Contains(desc, "cloud") {
 		score -= 5
+		reasons = append(reasons, "흐린 날씨")
+	} else if strings.Contains(desc, "맑") || strings.Contains(desc, "화창") || strings.Contains(desc, "청명") {
+		reasons = append(reasons, "맑은 하늘 ☀️")
 	}
-	
+
 	// 점수 범위 제한
 	if score < 0 {
 		score = 0
@@ -444,7 +464,7 @@ func (g *GolfCollector) calculateGolfIndex(w *GolfWeather) (int, string) {
 	if score > 100 {
 		score = 100
 	}
-	
+
 	// 등급 결정
 	var grade string
 	switch {
@@ -457,14 +477,23 @@ func (g *GolfCollector) calculateGolfIndex(w *GolfWeather) (int, string) {
 	default:
 		grade = "🔴 비추"
 	}
-	
-	return score, grade
+
+	// 한줄평 생성 (최대 2개 이유)
+	comment := ""
+	if len(reasons) > 0 {
+		if len(reasons) > 2 {
+			reasons = reasons[:2]
+		}
+		comment = strings.Join(reasons, ", ")
+	}
+
+	return score, grade, comment
 }
 
 // GetGolfProducts 골프 용품 추천 (쿠팡 파트너스)
 func (g *GolfCollector) GetGolfProducts() []GolfProduct {
 	baseURL := "https://www.coupang.com/vp/products/"
-	
+
 	products := []GolfProduct{
 		{
 			Name:     "타이틀리스트 Pro V1 골프공 12개입",
@@ -503,14 +532,14 @@ func (g *GolfCollector) GetGolfProducts() []GolfProduct {
 			URL:      baseURL + "678901234",
 		},
 	}
-	
+
 	// 쿠팡 파트너스 링크 생성
 	for i := range products {
 		if g.coupangID != "" {
 			products[i].URL = fmt.Sprintf("%s?wPcid=%s&sfrn=AFFILIATE", products[i].URL, g.coupangID)
 		}
 	}
-	
+
 	return products
 }
 
@@ -518,20 +547,20 @@ func (g *GolfCollector) GetGolfProducts() []GolfProduct {
 func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	now := time.Now()
 	tomorrow := now.AddDate(0, 0, 1)
-	
+
 	// 모든 지역 표시
 	rand.Seed(now.UnixNano())
 	selectedRegions := g.regions
-	
+
 	// 각 지역 내일 날씨 예측 조회
 	var weatherData []struct {
 		Region  GolfRegion
 		Weather *GolfWeather
 	}
-	
+
 	bestIndex := 0
 	bestRegion := ""
-	
+
 	for _, region := range selectedRegions {
 		weather := g.simulateTomorrowWeather(region) // 내일 날씨 예측
 		if weather != nil {
@@ -539,24 +568,24 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 				Region  GolfRegion
 				Weather *GolfWeather
 			}{region, weather})
-			
+
 			if weather.GolfIndex > bestIndex {
 				bestIndex = weather.GolfIndex
 				bestRegion = region.Name
 			}
 		}
 	}
-	
+
 	// 골프 용품
 	products := g.GetGolfProducts()
-	
+
 	// 제목 생성 (내일 날짜)
 	title := fmt.Sprintf("[%s 예보] 내일 골프 날씨 ⛳ %s 골프지수 %d점! 추천 골프장",
 		tomorrow.Format("01/02"), bestRegion, bestIndex)
-	
+
 	// 본문 생성
 	var content strings.Builder
-	
+
 	// 스타일
 	content.WriteString(`
 <style>
@@ -573,6 +602,7 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 .golf-index { text-align: center; padding: 15px; background: #f5f5f5; border-radius: 8px; margin-bottom: 15px; }
 .golf-index .score { font-size: 32px; font-weight: 700; }
 .golf-index .grade { font-size: 16px; margin-top: 5px; }
+.golf-index .comment { font-size: 13px; color: #666; margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; }
 .course-list { margin-top: 15px; }
 .course-item { padding: 12px 0; border-bottom: 1px solid #eee; }
 .course-item:last-child { border-bottom: none; }
@@ -592,7 +622,7 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 `)
 
 	content.WriteString(`<div class="golf-container">`)
-	
+
 	// 헤더 (내일 날짜)
 	content.WriteString(fmt.Sprintf(`
 <div class="golf-header">
@@ -603,7 +633,7 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 
 	// 날씨 카드들
 	content.WriteString(`<div class="weather-grid">`)
-	
+
 	for _, data := range weatherData {
 		content.WriteString(fmt.Sprintf(`
 <div class="weather-card">
@@ -619,6 +649,7 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	<div class="golf-index">
 		<div class="score">%d점</div>
 		<div class="grade">%s</div>
+		<div class="comment">💬 %s</div>
 	</div>
 	<div class="course-list">
 		<strong>🏌️ 추천 골프장</strong>
@@ -629,7 +660,8 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 			data.Weather.WindSpeed,
 			data.Weather.Description,
 			data.Weather.GolfIndex,
-			data.Weather.GolfGrade))
+			data.Weather.GolfGrade,
+			data.Weather.GolfComment))
 
 		for _, course := range data.Region.GolfCourses {
 			content.WriteString(fmt.Sprintf(`
@@ -644,10 +676,10 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 			}
 			content.WriteString(`</div></div>`)
 		}
-		
+
 		content.WriteString(`</div></div>`)
 	}
-	
+
 	content.WriteString(`</div>`) // weather-grid 끝
 
 	// 골프 용품 추천
@@ -701,21 +733,20 @@ func formatPrice(price int) string {
 	if n <= 3 {
 		return str
 	}
-	
+
 	var result strings.Builder
 	remainder := n % 3
 	if remainder > 0 {
 		result.WriteString(str[:remainder])
 		result.WriteString(",")
 	}
-	
+
 	for i := remainder; i < n; i += 3 {
 		if i > remainder {
 			result.WriteString(",")
 		}
 		result.WriteString(str[i : i+3])
 	}
-	
+
 	return result.String()
 }
-

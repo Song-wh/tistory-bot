@@ -335,7 +335,7 @@ func (g *GolfTipsCollector) GenerateGolfTipsPost(ctx context.Context) *Post {
 	for _, product := range selectedProducts {
 		url := g.generatePartnerLink(product.ProductID)
 		stars := strings.Repeat("⭐", int(product.Rating))
-		
+
 		content.WriteString(fmt.Sprintf(`
 		<div class="product-card">
 			<div class="product-name">%s</div>
@@ -381,4 +381,3 @@ func (g *GolfTipsCollector) generatePartnerLink(productID string) string {
 	}
 	return baseURL
 }
-
