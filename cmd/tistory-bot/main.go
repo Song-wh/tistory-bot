@@ -133,8 +133,8 @@ var postCmd = &cobra.Command{
 
 			categoryName := acc.GetCategoryName(post.Category)
 			if categoryName == "" {
-				fmt.Printf("  ⚠️ [%s] 카테고리 '%s' 미설정, 건너뜀\n", acc.Name, post.Category)
-				continue
+				fmt.Printf("  ℹ️ [%s] 카테고리 '%s' 미설정, 기본 카테고리 사용\n", acc.Name, post.Category)
+				// 빈 문자열 = 카테고리 선택 안 함 (기본 카테고리에 게시)
 			}
 
 			// 티스토리 클라이언트 생성
@@ -301,8 +301,7 @@ var runCmd = &cobra.Command{
 
 				categoryName := acc.GetCategoryName(post.Category)
 				if categoryName == "" {
-					fmt.Printf("    ⚠️ 카테고리 '%s' 미설정, 건너뜀\n", post.Category)
-					continue
+					fmt.Printf("    ℹ️ 카테고리 '%s' 미설정, 기본 카테고리 사용\n", post.Category)
 				}
 
 				_, err := client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
@@ -529,8 +528,7 @@ func runPostForAccount(cfg *config.Config, acc *config.AccountConfig, category s
 
 	categoryName := acc.GetCategoryName(post.Category)
 	if categoryName == "" {
-		fmt.Printf("  ⚠️ [%s] 카테고리 '%s' 미설정\n", acc.Name, post.Category)
-		return
+		fmt.Printf("  ℹ️ [%s] 카테고리 '%s' 미설정, 기본 카테고리 사용\n", acc.Name, post.Category)
 	}
 
 	client := tistory.NewClient(

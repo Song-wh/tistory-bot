@@ -139,10 +139,19 @@ func (a *AccountConfig) HasNaver() bool {
 	return a.Naver.ClientID != "" && a.Naver.ClientSecret != ""
 }
 
-// GetCategoryName 카테고리 이름 반환
+// GetCategoryName 카테고리 이름 반환 (없으면 빈 문자열)
 func (a *AccountConfig) GetCategoryName(category string) string {
 	if name, ok := a.Categories[category]; ok {
 		return name
 	}
 	return ""
+}
+
+// GetCategoryNameOrDefault 카테고리 이름 반환 (없으면 기본값)
+func (a *AccountConfig) GetCategoryNameOrDefault(category string) string {
+	if name, ok := a.Categories[category]; ok {
+		return name
+	}
+	// 기본 카테고리 (티스토리 기본값)
+	return ""  // 빈 문자열 = 카테고리 선택 안 함 (기본 카테고리)
 }
