@@ -217,12 +217,14 @@ var postCmd = &cobra.Command{
 			c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
 			products, err := c.GetGoldboxProducts(ctx, 10)
 			if err != nil {
-				fmt.Printf("크롤링 실패, 샘플 데이터 사용: %v\n", err)
-				products = c.GetMockProducts(10)
+				fmt.Printf("❌ 크롤링 실패: %v\n", err)
+				fmt.Println("⏭️ 실제 상품을 가져오지 못해 포스팅을 건너뜁니다.")
+				os.Exit(0)
 			}
 			if len(products) == 0 {
-				fmt.Println("상품 없음, 샘플 데이터 사용")
-				products = c.GetMockProducts(10)
+				fmt.Println("❌ 상품을 찾지 못했습니다.")
+				fmt.Println("⏭️ 포스팅을 건너뜁니다.")
+				os.Exit(0)
 			}
 			post = c.GenerateCoupangPost(products)
 
@@ -416,11 +418,13 @@ var runCmd = &cobra.Command{
 				c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
 				products, e := c.GetGoldboxProducts(ctx, 10)
 				if e != nil {
-					fmt.Printf("  ⚠️ 크롤링 실패, 샘플 사용: %v\n", e)
-					products = c.GetMockProducts(10)
+					fmt.Printf("  ❌ 크롤링 실패: %v\n", e)
+					fmt.Println("  ⏭️ 포스팅 건너뜀")
+					continue
 				}
 				if len(products) == 0 {
-					products = c.GetMockProducts(10)
+					fmt.Println("  ❌ 상품 없음, 포스팅 건너뜀")
+					continue
 				}
 				post = c.GenerateCoupangPost(products)
 			}
@@ -603,11 +607,13 @@ func runPost(cfg *config.Config, category string) {
 		c := collector.NewCoupangCollector(cfg.Coupang.PartnerID)
 		products, err := c.GetGoldboxProducts(ctx, 10)
 		if err != nil {
-			fmt.Printf("  ⚠️ 크롤링 실패, 샘플 사용: %v\n", err)
-			products = c.GetMockProducts(10)
+			fmt.Printf("  ❌ 크롤링 실패: %v\n", err)
+			fmt.Println("  ⏭️ 포스팅 건너뜀")
+			return
 		}
 		if len(products) == 0 {
-			products = c.GetMockProducts(10)
+			fmt.Println("  ❌ 상품 없음, 포스팅 건너뜀")
+			return
 		}
 		post = c.GenerateCoupangPost(products)
 
@@ -647,4 +653,3 @@ func main() {
 		os.Exit(1)
 	}
 }
-

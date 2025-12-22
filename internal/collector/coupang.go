@@ -3,19 +3,20 @@ package collector
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 // CoupangCollector 쿠팡 파트너스 수집기
 type CoupangCollector struct {
-	client    *http.Client
 	partnerID string
+	browser   *rod.Browser
 }
 
 // CoupangProduct 쿠팡 상품 정보
@@ -42,163 +43,188 @@ type CoupangCategory struct {
 // NewCoupangCollector 쿠팡 수집기 생성
 func NewCoupangCollector(partnerID string) *CoupangCollector {
 	return &CoupangCollector{
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
 		partnerID: partnerID,
 	}
 }
 
-// GetGoldboxProducts 쿠팡 골드박스 상품 수집
+// Connect 브라우저 연결
+func (c *CoupangCollector) Connect() error {
+	l := launcher.New().
+		Headless(true).
+		Leakless(false). // Windows 호환성
+		Set("disable-gpu").
+		Set("no-sandbox")
+
+	url, err := l.Launch()
+	if err != nil {
+		return fmt.Errorf("브라우저 실행 실패: %w", err)
+	}
+
+	c.browser = rod.New().ControlURL(url)
+	if err := c.browser.Connect(); err != nil {
+		return fmt.Errorf("브라우저 연결 실패: %w", err)
+	}
+
+	return nil
+}
+
+// Close 브라우저 종료
+func (c *CoupangCollector) Close() {
+	if c.browser != nil {
+		c.browser.MustClose()
+	}
+}
+
+// GetGoldboxProducts 쿠팡 골드박스 상품 수집 (브라우저 크롤링)
 func (c *CoupangCollector) GetGoldboxProducts(ctx context.Context, limit int) ([]CoupangProduct, error) {
-	url := "https://www.coupang.com/np/goldbox"
-	return c.scrapeProducts(ctx, url, limit, "골드박스")
+	if err := c.Connect(); err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	fmt.Println("    🌐 쿠팡 골드박스 페이지 로딩 중...")
+
+	page, err := c.browser.Page(proto.TargetCreateTarget{URL: "https://www.coupang.com/np/goldbox"})
+	if err != nil {
+		return nil, fmt.Errorf("페이지 열기 실패: %w", err)
+	}
+	defer page.Close()
+
+	// 페이지 로딩 대기
+	if err := page.WaitLoad(); err != nil {
+		return nil, fmt.Errorf("페이지 로딩 실패: %w", err)
+	}
+
+	// 추가 대기 (동적 컨텐츠)
+	time.Sleep(3 * time.Second)
+
+	// 스크롤 다운해서 더 많은 상품 로딩
+	page.MustEval(`() => window.scrollTo(0, 1000)`)
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("    📦 상품 정보 추출 중...")
+
+	// JavaScript로 상품 정보 추출
+	result := page.MustEval(`(limit) => {
+		const products = [];
+		
+		// 골드박스 상품 셀렉터들
+		const items = document.querySelectorAll('.product-item, .baby-product-wrap, [class*="product-"]');
+		
+		for (const item of items) {
+			if (products.length >= limit) break;
+			
+			try {
+				// 제목
+				let title = '';
+				const nameEl = item.querySelector('.name, .product-name, [class*="name"]');
+				if (nameEl) title = nameEl.textContent.trim();
+				if (!title) {
+					const linkEl = item.querySelector('a');
+					if (linkEl) title = linkEl.getAttribute('title') || '';
+				}
+				if (!title) continue;
+				
+				// 가격
+				let price = 0;
+				const priceEl = item.querySelector('.price-value, .sale-price, [class*="price"] strong, [class*="price"]');
+				if (priceEl) {
+					const priceText = priceEl.textContent.replace(/[^0-9]/g, '');
+					price = parseInt(priceText) || 0;
+				}
+				
+				// 원가
+				let origPrice = 0;
+				const origEl = item.querySelector('.base-price, .origin-price, del');
+				if (origEl) {
+					const origText = origEl.textContent.replace(/[^0-9]/g, '');
+					origPrice = parseInt(origText) || 0;
+				}
+				
+				// 할인율
+				let discountRate = 0;
+				const discountEl = item.querySelector('.discount-rate, .discount-percentage, [class*="discount"]');
+				if (discountEl) {
+					const discountText = discountEl.textContent.match(/(\d+)/);
+					if (discountText) discountRate = parseInt(discountText[1]);
+				}
+				if (!discountRate && origPrice > 0 && price > 0) {
+					discountRate = Math.round((1 - price / origPrice) * 100);
+				}
+				
+				// 이미지
+				let imageUrl = '';
+				const imgEl = item.querySelector('img');
+				if (imgEl) {
+					imageUrl = imgEl.src || imgEl.getAttribute('data-src') || '';
+					if (imageUrl && !imageUrl.startsWith('http')) {
+						imageUrl = 'https:' + imageUrl;
+					}
+				}
+				
+				// 상품 URL
+				let productUrl = '';
+				let productId = '';
+				const linkEl = item.querySelector('a');
+				if (linkEl) {
+					productUrl = linkEl.href || '';
+					const match = productUrl.match(/\/products\/(\d+)/);
+					if (match) productId = match[1];
+				}
+				
+				// 로켓배송 여부
+				const isRocket = item.querySelector('[class*="rocket"], .badge-rocket') !== null;
+				
+				products.push({
+					title: title,
+					price: price,
+					origPrice: origPrice,
+					discountRate: discountRate,
+					imageUrl: imageUrl,
+					productUrl: productUrl,
+					productId: productId,
+					isRocket: isRocket,
+					category: '골드박스'
+				});
+			} catch (e) {
+				console.error('상품 파싱 에러:', e);
+			}
+		}
+		
+		return products;
+	}`, limit)
+
+	// 결과 파싱
+	var products []CoupangProduct
+	arr := result.Arr()
+	
+	for _, item := range arr {
+		m := item.Map()
+		product := CoupangProduct{
+			Title:        m["title"].Str(),
+			Price:        int(m["price"].Num()),
+			OrigPrice:    int(m["origPrice"].Num()),
+			DiscountRate: int(m["discountRate"].Num()),
+			ImageURL:     m["imageUrl"].Str(),
+			ProductURL:   m["productUrl"].Str(),
+			ProductID:    m["productId"].Str(),
+			IsRocket:     m["isRocket"].Bool(),
+			Category:     m["category"].Str(),
+		}
+		
+		if product.Title != "" && product.Price > 0 {
+			products = append(products, product)
+		}
+	}
+
+	fmt.Printf("    ✅ %d개 상품 수집 완료\n", len(products))
+	return products, nil
 }
 
 // GetBestProducts 쿠팡 베스트 상품 수집
 func (c *CoupangCollector) GetBestProducts(ctx context.Context, limit int) ([]CoupangProduct, error) {
-	url := "https://www.coupang.com/np/campaigns/82"
-	return c.scrapeProducts(ctx, url, limit, "베스트")
-}
-
-// GetRocketDeals 로켓배송 특가 수집
-func (c *CoupangCollector) GetRocketDeals(ctx context.Context, limit int) ([]CoupangProduct, error) {
-	url := "https://www.coupang.com/np/campaigns/82"
-	products, err := c.scrapeProducts(ctx, url, limit*2, "로켓특가")
-	if err != nil {
-		return nil, err
-	}
-
-	// 로켓배송 상품만 필터링
-	var rocketProducts []CoupangProduct
-	for _, p := range products {
-		if p.IsRocket && len(rocketProducts) < limit {
-			rocketProducts = append(rocketProducts, p)
-		}
-	}
-	return rocketProducts, nil
-}
-
-// scrapeProducts 상품 스크래핑
-func (c *CoupangCollector) scrapeProducts(ctx context.Context, url string, limit int, category string) ([]CoupangProduct, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// 브라우저처럼 헤더 설정
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-	req.Header.Set("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-	req.Header.Set("Cache-Control", "no-cache")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("HTTP 에러: %d", resp.StatusCode)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var products []CoupangProduct
-
-	// 골드박스/베스트 상품 파싱
-	doc.Find(".baby-product, .product-item, li.baby-product-wrap").Each(func(i int, s *goquery.Selection) {
-		if len(products) >= limit {
-			return
-		}
-
-		product := c.parseProductItem(s, category)
-		if product != nil && product.Title != "" {
-			products = append(products, *product)
-		}
-	})
-
-	// 대체 셀렉터
-	if len(products) == 0 {
-		doc.Find("[class*='product'], [class*='item']").Each(func(i int, s *goquery.Selection) {
-			if len(products) >= limit {
-				return
-			}
-
-			product := c.parseProductItem(s, category)
-			if product != nil && product.Title != "" {
-				products = append(products, *product)
-			}
-		})
-	}
-
-	return products, nil
-}
-
-// parseProductItem 개별 상품 파싱
-func (c *CoupangCollector) parseProductItem(s *goquery.Selection, category string) *CoupangProduct {
-	product := &CoupangProduct{
-		Category: category,
-	}
-
-	// 제목
-	product.Title = strings.TrimSpace(s.Find(".name, .product-name, [class*='name']").First().Text())
-	if product.Title == "" {
-		product.Title = strings.TrimSpace(s.Find("a").First().AttrOr("title", ""))
-	}
-
-	// 가격
-	priceText := s.Find(".price-value, .sale-price, [class*='price']").First().Text()
-	product.Price = c.parsePrice(priceText)
-
-	// 원가
-	origPriceText := s.Find(".base-price, .origin-price, [class*='origin']").First().Text()
-	product.OrigPrice = c.parsePrice(origPriceText)
-
-	// 할인율
-	discountText := s.Find(".discount-rate, .discount-percentage, [class*='discount']").First().Text()
-	product.DiscountRate = c.parseDiscount(discountText)
-
-	// 할인율 계산 (없는 경우)
-	if product.DiscountRate == 0 && product.OrigPrice > 0 && product.Price > 0 {
-		product.DiscountRate = int((1 - float64(product.Price)/float64(product.OrigPrice)) * 100)
-	}
-
-	// 이미지
-	product.ImageURL, _ = s.Find("img").First().Attr("src")
-	if product.ImageURL == "" {
-		product.ImageURL, _ = s.Find("img").First().Attr("data-src")
-	}
-	if !strings.HasPrefix(product.ImageURL, "http") && product.ImageURL != "" {
-		product.ImageURL = "https:" + product.ImageURL
-	}
-
-	// 상품 URL
-	productURL, exists := s.Find("a").First().Attr("href")
-	if exists {
-		if !strings.HasPrefix(productURL, "http") {
-			productURL = "https://www.coupang.com" + productURL
-		}
-		product.ProductURL = productURL
-		product.ProductID = c.extractProductID(productURL)
-	}
-
-	// 로켓배송 여부
-	rocketBadge := s.Find("[class*='rocket'], .badge-rocket").Length()
-	product.IsRocket = rocketBadge > 0
-
-	// 리뷰
-	reviewText := s.Find(".rating-total-count, [class*='review']").First().Text()
-	product.ReviewCount = c.parseReviewCount(reviewText)
-
-	// 평점
-	ratingText := s.Find(".rating, [class*='star']").First().AttrOr("style", "")
-	product.Rating = c.parseRating(ratingText)
-
-	return product
+	// 골드박스와 동일한 방식 사용
+	return c.GetGoldboxProducts(ctx, limit)
 }
 
 // parsePrice 가격 파싱
@@ -396,7 +422,7 @@ func (c *CoupangCollector) GenerateCoupangPost(products []CoupangProduct) *Post 
 // GenerateCategoryPost 카테고리별 포스트 생성
 func (c *CoupangCollector) GenerateCategoryPost(products []CoupangProduct, categoryName string) *Post {
 	now := time.Now()
-	
+
 	// 카테고리별 이모지
 	emoji := "🛒"
 	switch categoryName {
@@ -415,7 +441,7 @@ func (c *CoupangCollector) GenerateCategoryPost(products []CoupangProduct, categ
 	title := fmt.Sprintf("[%s] %s %s 베스트 특가 TOP %d", now.Format("01/02"), emoji, categoryName, len(products))
 
 	var content strings.Builder
-	
+
 	content.WriteString(fmt.Sprintf(`
 <h2>%s %s 카테고리 인기 특가</h2>
 <p>📅 %s 기준 | 실시간 베스트 상품</p>
@@ -424,7 +450,7 @@ func (c *CoupangCollector) GenerateCategoryPost(products []CoupangProduct, categ
 
 	for i, product := range products {
 		partnerLink := c.GeneratePartnerLink(product.ProductURL)
-		
+
 		content.WriteString(fmt.Sprintf(`
 <div style="border: 2px solid #00a0e4; border-radius: 12px; padding: 20px; margin: 15px 0; background: #fafafa;">
 	<h3 style="margin: 0 0 10px 0; color: #333;">%d위. %s</h3>
@@ -440,19 +466,19 @@ func (c *CoupangCollector) GenerateCategoryPost(products []CoupangProduct, categ
 
 		// 가격 정보
 		content.WriteString(`<div style="background: #fff; padding: 15px; border-radius: 8px; margin: 10px 0;">`)
-		
+
 		if product.DiscountRate > 0 {
 			content.WriteString(fmt.Sprintf(`<span style="background: #f03e3e; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; margin-right: 10px;">%d%% 할인</span>`, product.DiscountRate))
 		}
-		
+
 		if product.Price > 0 {
 			content.WriteString(fmt.Sprintf(`<span style="font-size: 24px; font-weight: bold; color: #111;">%s원</span>`, c.formatPrice(product.Price)))
 		}
-		
+
 		if product.OrigPrice > 0 && product.OrigPrice != product.Price {
 			content.WriteString(fmt.Sprintf(`<br><span style="text-decoration: line-through; color: #999;">정가 %s원</span>`, c.formatPrice(product.OrigPrice)))
 		}
-		
+
 		content.WriteString(`</div>`)
 
 		// 뱃지들
@@ -492,7 +518,7 @@ func (c *CoupangCollector) formatPrice(price int) string {
 	if n <= 3 {
 		return str
 	}
-	
+
 	var result strings.Builder
 	remainder := n % 3
 	if remainder > 0 {
@@ -501,14 +527,14 @@ func (c *CoupangCollector) formatPrice(price int) string {
 			result.WriteString(",")
 		}
 	}
-	
+
 	for i := remainder; i < n; i += 3 {
 		if i > remainder {
 			result.WriteString(",")
 		}
 		result.WriteString(str[i : i+3])
 	}
-	
+
 	return result.String()
 }
 
@@ -647,4 +673,3 @@ func (c *CoupangCollector) GetMockProducts(limit int) []CoupangProduct {
 
 	return mockProducts[:limit]
 }
-

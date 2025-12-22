@@ -28,4 +28,3 @@ const (
 	CategoryTrend   = "트렌드/실검"
 	CategoryCoupang = "쿠팡/특가"
 )
-
