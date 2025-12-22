@@ -27,4 +27,5 @@ const (
 	CategoryMovie   = "영화/드라마"
 	CategoryTrend   = "트렌드/실검"
 	CategoryCoupang = "쿠팡/특가"
+	CategoryGolf    = "골프/날씨"
 )

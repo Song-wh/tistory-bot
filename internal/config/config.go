@@ -153,5 +153,5 @@ func (a *AccountConfig) GetCategoryNameOrDefault(category string) string {
 		return name
 	}
 	// 기본 카테고리 (티스토리 기본값)
-	return ""  // 빈 문자열 = 카테고리 선택 안 함 (기본 카테고리)
+	return "" // 빈 문자열 = 카테고리 선택 안 함 (기본 카테고리)
 }

@@ -95,7 +95,8 @@ var postCmd = &cobra.Command{
   weather      - 날씨/옷차림
   fortune      - 오늘의 운세
   sports       - 스포츠 뉴스
-  coupang      - 쿠팡 특가/파트너스 💰`,
+  coupang      - 쿠팡 특가/파트너스 💰
+  golf         - 골프 날씨 + 골프장 추천 ⛳`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -502,6 +503,14 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 			return nil
 		}
 		post = c.GenerateCoupangPost(products)
+
+	case "golf":
+		coupangID := ""
+		if acc.HasCoupang() {
+			coupangID = acc.Coupang.PartnerID
+		}
+		c := collector.NewGolfCollector(coupangID)
+		post = c.GenerateGolfPost(ctx)
 
 	default:
 		fmt.Printf("    ❌ 알 수 없는 카테고리: %s\n", category)
