@@ -478,16 +478,9 @@ func (g *GolfCollector) GetGolfProducts() []GolfProduct {
 func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	now := time.Now()
 	
-	// 오늘의 추천 지역 선택 (랜덤 또는 날씨 기반)
+	// 모든 지역 표시
 	rand.Seed(now.UnixNano())
 	selectedRegions := g.regions
-	if len(selectedRegions) > 3 {
-		// 랜덤하게 3개 지역 선택
-		rand.Shuffle(len(selectedRegions), func(i, j int) {
-			selectedRegions[i], selectedRegions[j] = selectedRegions[j], selectedRegions[i]
-		})
-		selectedRegions = selectedRegions[:3]
-	}
 	
 	// 각 지역 날씨 조회
 	var weatherData []struct {
