@@ -96,7 +96,8 @@ var postCmd = &cobra.Command{
   sports       - 스포츠 뉴스
   coupang      - 쿠팡 특가/파트너스 💰
   golf         - 내일 골프 날씨 예보 ⛳
-  golf-tips    - 골프 레슨 팁 + 용품 추천 🏌️`,
+  golf-tips    - 골프 레슨 팁 + 용품 추천 🏌️
+  error        - 에러/장애 해결 아카이브 🔴`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -519,6 +520,10 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		}
 		c := collector.NewGolfTipsCollector(coupangID)
 		post = c.GenerateGolfTipsPost(ctx)
+
+	case "error":
+		c := collector.NewErrorArchiveCollector()
+		post = c.GenerateErrorPost(ctx)
 
 	default:
 		fmt.Printf("    ❌ 알 수 없는 카테고리: %s\n", category)

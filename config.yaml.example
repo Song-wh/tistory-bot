@@ -1,85 +1,125 @@
 # 티스토리 자동 포스팅 봇 설정
+# 다중 계정 지원
 
 # ===========================================
-# 티스토리 로그인 정보
-# 카카오 계정으로 로그인합니다
-# ===========================================
-tistory:
-  email: ""           # 카카오 계정 이메일
-  password: ""        # 카카오 계정 비밀번호
-  blog_name: ""       # 블로그 주소 (예: myblog.tistory.com -> myblog)
-
-# ===========================================
-# 브라우저 설정
+# 전역 설정
 # ===========================================
 browser:
-  headless: true      # true: 브라우저 숨김, false: 브라우저 표시 (디버깅용)
-  slow_motion: 0      # 동작 간 딜레이(ms) - 디버깅 시 500~1000 권장
+  headless: true      # true: 브라우저 숨김 (스케줄러용), false: 브라우저 표시 (디버깅용)
+  slow_motion: 100    # 동작 간 딜레이(ms)
 
-# ===========================================
-# 카테고리 매핑 (티스토리 카테고리 이름)
-# tistory-bot categories 명령으로 확인 가능
-# 콜렉터의 Category -> 티스토리 실제 카테고리명
-# ===========================================
-categories:
-  "주식/코인": ""        # 코인 시세
-  "핫딜/할인": ""        # 핫딜/할인 정보
-  "IT/테크": ""          # IT/테크 뉴스
-  "영화/드라마": ""      # 영화 정보
-  "트렌드/실검": ""      # 트렌드/실검
-  "로또/복권": ""        # 로또 당첨번호
-  "날씨/생활": ""        # 날씨/옷차림
-  "운세/점술": ""        # 오늘의 운세
-  "스포츠": ""           # 스포츠 뉴스
-
-# ===========================================
 # TMDB API (영화/드라마 정보용 - 무료)
 # https://www.themoviedb.org/settings/api 에서 발급
-# ===========================================
 tmdb:
-  api_key: ""
+  api_key: "YOUR_TMDB_API_KEY"
 
 # ===========================================
-# 네이버 API (선택사항 - 트렌드 수집용)
-# https://developers.naver.com 에서 발급
+# 계정 목록 (여러 계정 동시 관리)
 # ===========================================
-naver:
-  client_id: ""
-  client_secret: ""
-
-# ===========================================
-# 쿠팡파트너스 API (선택사항 - 핫딜용)
-# https://partners.coupang.com 에서 발급
-# ===========================================
-coupang:
-  access_key: ""
-  secret_key: ""
-
-# ===========================================
-# 자동 스케줄 설정
-# go run ./cmd/tistory-bot schedule 로 실행
-# ===========================================
-schedule:
-  enabled: true
-  jobs:
-    # 기존 컨텐츠
-    - category: trend
-      cron: "0 9,14,20 * * *"      # 하루 3회: 9시, 14시, 20시
-    - category: crypto
-      cron: "0 10,18 * * *"        # 하루 2회: 10시, 18시
-    - category: tech
-      cron: "0 12 * * *"           # 하루 1회: 12시
-    - category: movie
-      cron: "0 21 * * 1,4"         # 주 2회: 월/목 21시
+accounts:
+  # ───────────────────────────────────────
+  # 계정 1: 메인 블로그
+  # ───────────────────────────────────────
+  - name: "my-blog"                    # 계정 식별자
+    enabled: true                       # 활성화 여부
     
-    # 새 컨텐츠
-    - category: lotto
-      cron: "0 22 * * 6"           # 매주 토요일 22시 (추첨 후)
-    - category: lotto-predict
-      cron: "0 10 * * 5"           # 매주 금요일 10시 (추첨 전)
-    - category: weather
-      cron: "0 7,17 * * *"         # 하루 2회: 아침 7시, 저녁 17시
-    - category: fortune
-      cron: "0 6 * * *"            # 매일 아침 6시
-    - category: sports
-      cron: "0 8 * * *"            # 매일 아침 8시
+    tistory:
+      email: "your-email@kakao.com"    # 카카오 계정 이메일
+      password: "your-password"         # 카카오 계정 비밀번호
+      blog_name: "my-blog"             # 블로그 주소 (예: my-blog.tistory.com → my-blog)
+    
+    # 쿠팡 파트너스 (선택사항 - 없으면 쿠팡 포스팅 건너뜀)
+    coupang:
+      partner_id: "AF1234567"          # 쿠팡 파트너스 ID
+    
+    # 네이버 API (선택사항 - 없으면 생략)
+    # naver:
+    #   client_id: "YOUR_NAVER_CLIENT_ID"
+    #   client_secret: "YOUR_NAVER_CLIENT_SECRET"
+    
+    # 카테고리 매핑 (콜렉터 카테고리 → 티스토리 실제 카테고리명)
+    # tistory-bot categories 명령으로 확인 가능
+    categories:
+      "주식/코인": "주식-코인"
+      "핫딜/할인": "핫딜-할인"
+      "IT/테크": "IT-테크"
+      "영화/드라마": "영화-드라마"
+      "트렌드/실검": "트렌드-실검"
+      "로또/복권": "로또-복권"
+      "운세/점술": "운세-점술"
+      "스포츠": "스포츠"
+      "쿠팡/특가": "쿠팡-특가"
+      "골프/날씨": "골프-날씨"
+    
+    # 자동 스케줄 설정
+    schedule:
+      enabled: true
+      jobs:
+        # 트렌드/실검 - 하루 3회
+        - category: trend
+          cron: "0 9,14,20 * * *"
+        
+        # 코인 시세 - 하루 2회
+        - category: crypto
+          cron: "0 10,18 * * *"
+        
+        # IT/테크 뉴스 - 하루 1회
+        - category: tech
+          cron: "0 12 * * *"
+        
+        # 영화 정보 - 주 2회 (월/목)
+        - category: movie
+          cron: "0 21 * * 1,4"
+        
+        # 로또 당첨번호 - 매주 토요일 22시
+        - category: lotto
+          cron: "0 22 * * 6"
+        
+        # 로또 예측번호 - 매주 금요일 10시
+        - category: lotto-predict
+          cron: "0 10 * * 5"
+        
+        # 오늘의 운세 - 매일 아침 6시
+        - category: fortune
+          cron: "0 6 * * *"
+        
+        # 스포츠 뉴스 - 매일 아침 8시
+        - category: sports
+          cron: "0 8 * * *"
+        
+        # 쿠팡 특가 - 하루 3회 💰
+        - category: coupang
+          cron: "0 9,13,19 * * *"
+        
+        # 골프 레슨 팁 + 용품 - 매일 아침 6시 🏌️
+        - category: golf-tips
+          cron: "0 6 * * *"
+        
+        # 내일 골프 날씨 예보 - 매일 오후 4시 ⛳
+        - category: golf
+          cron: "0 16 * * *"
+
+  # ───────────────────────────────────────
+  # 계정 2: 서브 블로그 (예시)
+  # ───────────────────────────────────────
+  # - name: "sub-blog"
+  #   enabled: false                    # 비활성화
+  #   
+  #   tistory:
+  #     email: "another@email.com"
+  #     password: "password123"
+  #     blog_name: "sub-blog"
+  #   
+  #   # coupang 미설정 → 쿠팡 포스팅 건너뜀
+  #   
+  #   categories:
+  #     "주식/코인": "주식"
+  #     "IT/테크": "기술"
+  #   
+  #   schedule:
+  #     enabled: true
+  #     jobs:
+  #       - category: trend
+  #         cron: "0 10 * * *"
+  #       - category: crypto
+  #         cron: "0 11 * * *"
