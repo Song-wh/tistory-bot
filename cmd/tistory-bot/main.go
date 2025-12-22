@@ -92,11 +92,11 @@ var postCmd = &cobra.Command{
   trend        - 트렌드/실검
   lotto        - 로또 당첨번호
   lotto-predict - 로또 예측번호 (AI 분석)
-  weather      - 날씨/옷차림
   fortune      - 오늘의 운세
   sports       - 스포츠 뉴스
   coupang      - 쿠팡 특가/파트너스 💰
-  golf         - 골프 날씨 + 골프장 추천 ⛳`,
+  golf         - 내일 골프 날씨 예보 ⛳
+  golf-tips    - 골프 레슨 팁 + 용품 추천 🏌️`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load(cfgFile)
@@ -511,6 +511,14 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		}
 		c := collector.NewGolfCollector(coupangID)
 		post = c.GenerateGolfPost(ctx)
+
+	case "golf-tips":
+		coupangID := ""
+		if acc.HasCoupang() {
+			coupangID = acc.Coupang.PartnerID
+		}
+		c := collector.NewGolfTipsCollector(coupangID)
+		post = c.GenerateGolfTipsPost(ctx)
 
 	default:
 		fmt.Printf("    ❌ 알 수 없는 카테고리: %s\n", category)

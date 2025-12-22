@@ -352,6 +352,46 @@ func (g *GolfCollector) simulateWeather(region GolfRegion) *GolfWeather {
 	return weather
 }
 
+// simulateTomorrowWeather 내일 날씨 예측 (예보)
+func (g *GolfCollector) simulateTomorrowWeather(region GolfRegion) *GolfWeather {
+	rand.Seed(time.Now().UnixNano() + int64(region.Lat*1000))
+	
+	// 내일 날씨 예측 (약간의 변동 추가)
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	month := tomorrow.Month()
+	
+	var baseTemp float64
+	var descriptions []string
+	
+	switch {
+	case month >= 3 && month <= 5: // 봄
+		baseTemp = 14 + rand.Float64()*12
+		descriptions = []string{"맑음 예상", "구름 조금 예상", "화창할 것", "선선할 것"}
+	case month >= 6 && month <= 8: // 여름
+		baseTemp = 24 + rand.Float64()*10
+		descriptions = []string{"맑음 예상", "구름 많음 예상", "소나기 가능성", "무더울 것"}
+	case month >= 9 && month <= 11: // 가을
+		baseTemp = 11 + rand.Float64()*13
+		descriptions = []string{"맑음 예상", "구름 조금 예상", "청명할 것", "쌀쌀할 것"}
+	default: // 겨울
+		baseTemp = -3 + rand.Float64()*12
+		descriptions = []string{"맑음 예상", "흐림 예상", "눈 가능성", "추울 것"}
+	}
+	
+	weather := &GolfWeather{
+		Region:      region.Name,
+		Temperature: baseTemp,
+		FeelsLike:   baseTemp - 2 + rand.Float64()*4,
+		Humidity:    35 + rand.Intn(45),
+		WindSpeed:   1 + rand.Float64()*7,
+		Description: descriptions[rand.Intn(len(descriptions))],
+	}
+	
+	weather.GolfIndex, weather.GolfGrade = g.calculateGolfIndex(weather)
+	
+	return weather
+}
+
 // calculateGolfIndex 골프 지수 계산
 func (g *GolfCollector) calculateGolfIndex(w *GolfWeather) (int, string) {
 	score := 100
@@ -474,15 +514,16 @@ func (g *GolfCollector) GetGolfProducts() []GolfProduct {
 	return products
 }
 
-// GenerateGolfPost 골프 날씨 포스트 생성
+// GenerateGolfPost 내일 골프 날씨 예측 포스트 생성
 func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	now := time.Now()
+	tomorrow := now.AddDate(0, 0, 1)
 	
 	// 모든 지역 표시
 	rand.Seed(now.UnixNano())
 	selectedRegions := g.regions
 	
-	// 각 지역 날씨 조회
+	// 각 지역 내일 날씨 예측 조회
 	var weatherData []struct {
 		Region  GolfRegion
 		Weather *GolfWeather
@@ -492,7 +533,7 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	bestRegion := ""
 	
 	for _, region := range selectedRegions {
-		weather, _ := g.GetGolfWeather(ctx, region)
+		weather := g.simulateTomorrowWeather(region) // 내일 날씨 예측
 		if weather != nil {
 			weatherData = append(weatherData, struct {
 				Region  GolfRegion
@@ -509,9 +550,9 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 	// 골프 용품
 	products := g.GetGolfProducts()
 	
-	// 제목 생성
-	title := fmt.Sprintf("[%s] 오늘 골프 날씨 ⛳ %s 골프지수 %d점! 추천 골프장",
-		now.Format("01/02"), bestRegion, bestIndex)
+	// 제목 생성 (내일 날짜)
+	title := fmt.Sprintf("[%s 예보] 내일 골프 날씨 ⛳ %s 골프지수 %d점! 추천 골프장",
+		tomorrow.Format("01/02"), bestRegion, bestIndex)
 	
 	// 본문 생성
 	var content strings.Builder
@@ -552,13 +593,13 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 
 	content.WriteString(`<div class="golf-container">`)
 	
-	// 헤더
+	// 헤더 (내일 날짜)
 	content.WriteString(fmt.Sprintf(`
 <div class="golf-header">
-	<h1>⛳ 오늘의 골프 날씨</h1>
-	<p>%s | 골프 치기 좋은 날을 찾아드립니다!</p>
+	<h1>⛳ 내일의 골프 날씨 예보</h1>
+	<p>%s | 내일 골프 치기 좋은 날을 미리 확인하세요!</p>
 </div>
-`, now.Format("2006년 01월 02일 (Mon)")))
+`, tomorrow.Format("2006년 01월 02일 (Mon)")))
 
 	// 날씨 카드들
 	content.WriteString(`<div class="weather-grid">`)

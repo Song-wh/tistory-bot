@@ -9,7 +9,6 @@
   • movie: 0 21 * * 1,4
   • lotto: 0 22 * * 6
   • lotto-predict: 0 10 * * 5
-  • weather: 0 7,17 * * *
   • fortune: 0 6 * * *
   • sports: 0 8 * * *
   • coupang: 0 9,13,19 * * *
