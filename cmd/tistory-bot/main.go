@@ -367,9 +367,9 @@ var scheduleCmd = &cobra.Command{
 				fmt.Printf("  • %s: %s\n", category, cronExpr)
 
 				c.AddFunc(cronExpr, func() {
-					// 랜덤 딜레이 (0~15분) - 자동화 티 안 나게
+					// 랜덤 딜레이 (0~45분) - 자동화 티 안 나게
 					rand.Seed(time.Now().UnixNano())
-					delay := time.Duration(rand.Intn(15)) * time.Minute
+					delay := time.Duration(rand.Intn(45)) * time.Minute
 					fmt.Printf("\n⏰ [%s] 스케줄 트리거: %s (%.0f분 후 실행)\n", accCopy.Name, category, delay.Minutes())
 					time.Sleep(delay)
 					fmt.Printf("▶️ [%s] 포스팅 시작: %s\n", accCopy.Name, category)
