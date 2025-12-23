@@ -18,6 +18,7 @@ type Config struct {
 	Naver        NaverConfig        `yaml:"naver"`
 	Coupang      CoupangConfig      `yaml:"coupang"`
 	FootballData *FootballDataConfig `yaml:"football_data"` // 스포츠 API (선택)
+	Thumbnail    *ThumbnailConfig   `yaml:"thumbnail"`     // 썸네일 설정 (선택)
 	Categories   map[string]string  `yaml:"categories"`
 	Schedule     ScheduleConfig     `yaml:"schedule"`
 }
@@ -25,6 +26,12 @@ type Config struct {
 // FootballDataConfig 스포츠 API 설정
 type FootballDataConfig struct {
 	APIKey string `yaml:"api_key"`
+}
+
+// ThumbnailConfig 썸네일 설정
+type ThumbnailConfig struct {
+	Enabled   bool   `yaml:"enabled"`
+	OutputDir string `yaml:"output_dir"`
 }
 
 // AccountConfig 개별 계정 설정

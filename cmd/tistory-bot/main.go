@@ -11,6 +11,7 @@ import (
 
 	"github.com/Song-wh/tistory-bot/internal/collector"
 	"github.com/Song-wh/tistory-bot/internal/config"
+	"github.com/Song-wh/tistory-bot/internal/thumbnail"
 	"github.com/Song-wh/tistory-bot/internal/tistory"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/cobra"
@@ -141,6 +142,19 @@ var postCmd = &cobra.Command{
 				// 빈 문자열 = 카테고리 선택 안 함 (기본 카테고리에 게시)
 			}
 
+			// 썸네일 생성
+			thumbnailPath := ""
+			if cfg.Thumbnail != nil && cfg.Thumbnail.Enabled {
+				thumbGen := thumbnail.NewGenerator(cfg.Thumbnail.OutputDir)
+				if path, err := thumbGen.GenerateForPost(category, post.Title); err == nil {
+					thumbnailPath = path
+					fmt.Printf("  🖼️ [%s] 썸네일 생성: %s\n", acc.Name, path)
+				} else {
+					fmt.Printf("  ⚠️ [%s] 썸네일 생성 실패: %v\n", acc.Name, err)
+				}
+				thumbGen.Cleanup()
+			}
+
 			// 티스토리 클라이언트 생성
 			client := tistory.NewClient(
 				acc.Tistory.Email,
@@ -153,7 +167,12 @@ var postCmd = &cobra.Command{
 
 			fmt.Printf("  📝 제목: %s\n", post.Title)
 
-			result, err := client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+			var result *tistory.PostResult
+			if thumbnailPath != "" {
+				result, err = client.WritePostWithThumbnail(ctx, post.Title, post.Content, categoryName, post.Tags, 3, thumbnailPath)
+			} else {
+				result, err = client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+			}
 			if err != nil {
 				fmt.Printf("  ❌ [%s] 포스팅 실패: %v\n", acc.Name, err)
 				continue
@@ -568,6 +587,20 @@ func runPostForAccount(cfg *config.Config, acc *config.AccountConfig, category s
 		fmt.Printf("  ℹ️ [%s] 카테고리 '%s' 미설정, 기본 카테고리 사용\n", acc.Name, post.Category)
 	}
 
+	// 썸네일 생성
+	thumbnailPath := ""
+	if cfg.Thumbnail != nil && cfg.Thumbnail.Enabled {
+		thumbGen := thumbnail.NewGenerator(cfg.Thumbnail.OutputDir)
+		if path, err := thumbGen.GenerateForPost(category, post.Title); err == nil {
+			thumbnailPath = path
+			fmt.Printf("  🖼️ [%s] 썸네일 생성: %s\n", acc.Name, path)
+		} else {
+			fmt.Printf("  ⚠️ [%s] 썸네일 생성 실패: %v\n", acc.Name, err)
+		}
+		// 오래된 썸네일 정리
+		thumbGen.Cleanup()
+	}
+
 	client := tistory.NewClient(
 		acc.Tistory.Email,
 		acc.Tistory.Password,
@@ -577,7 +610,15 @@ func runPostForAccount(cfg *config.Config, acc *config.AccountConfig, category s
 	)
 	defer client.Close()
 
-	_, err := client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+	var err error
+	if thumbnailPath != "" {
+		// 썸네일 포함 포스팅
+		_, err = client.WritePostWithThumbnail(ctx, post.Title, post.Content, categoryName, post.Tags, 3, thumbnailPath)
+	} else {
+		// 일반 포스팅
+		_, err = client.WritePost(ctx, post.Title, post.Content, categoryName, post.Tags, 3)
+	}
+
 	if err != nil {
 		fmt.Printf("  ❌ [%s] 포스팅 실패: %v\n", acc.Name, err)
 		return

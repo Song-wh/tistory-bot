@@ -538,6 +538,244 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 	}, nil
 }
 
+// WritePostWithThumbnail 썸네일 포함 글쓰기
+func (c *Client) WritePostWithThumbnail(ctx context.Context, title, content, categoryName string, tags []string, visibility int, thumbnailPath string) (*PostResult, error) {
+	if !c.loggedIn {
+		if err := c.Login(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// 글쓰기 페이지로 이동
+	editorURL := fmt.Sprintf("https://%s.tistory.com/manage/newpost", c.blogName)
+	page, err := c.browser.Page(proto.TargetCreateTarget{URL: editorURL})
+	if err != nil {
+		return nil, fmt.Errorf("에디터 페이지 열기 실패: %w", err)
+	}
+
+	// 다이얼로그 자동 처리
+	go page.EachEvent(func(e *proto.PageJavascriptDialogOpening) {
+		_ = proto.PageHandleJavaScriptDialog{Accept: false}.Call(page)
+	})()
+
+	page.MustWaitLoad()
+	time.Sleep(3 * time.Second)
+	fmt.Println("  ✅ 페이지 로딩 완료")
+
+	// 썸네일 업로드 (파일이 있는 경우)
+	if thumbnailPath != "" {
+		fmt.Println("  🖼️ 썸네일 업로드 중...")
+		if err := c.uploadThumbnail(page, thumbnailPath); err != nil {
+			fmt.Printf("  ⚠️ 썸네일 업로드 실패: %v\n", err)
+		} else {
+			fmt.Println("  ✅ 썸네일 업로드 완료")
+		}
+	}
+
+	// 제목 입력
+	page.MustEval(`(title) => {
+		const titleInput = document.querySelector('#post-title-inp') || 
+		                   document.querySelector('[class*="title"] input') ||
+		                   document.querySelector('input[placeholder*="제목"]');
+		if (titleInput) {
+			titleInput.value = title;
+			titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+			return true;
+		}
+		return false;
+	}`, title)
+
+	// 에디터 iframe으로 전환하여 본문 입력
+	page.MustEval(`(content) => {
+		const iframe = document.querySelector('#tinymce_ifr') || document.querySelector('iframe[id*="tinymce"]');
+		if (iframe) {
+			const doc = iframe.contentDocument || iframe.contentWindow.document;
+			const body = doc.body;
+			if (body) {
+				body.innerHTML = content;
+				return true;
+			}
+		}
+		const directEditor = document.querySelector('.mce-content-body') || document.querySelector('[contenteditable="true"]');
+		if (directEditor) {
+			directEditor.innerHTML = content;
+			return true;
+		}
+		return false;
+	}`, content)
+
+	time.Sleep(2 * time.Second)
+	fmt.Println("  📝 본문 입력 완료")
+
+	// 태그 입력 (최대 10개)
+	if len(tags) > 0 {
+		uniqueTags := make([]string, 0, 10)
+		seen := make(map[string]bool)
+		for _, tag := range tags {
+			tagLower := strings.ToLower(strings.TrimSpace(tag))
+			if tagLower != "" && !seen[tagLower] && len(uniqueTags) < 10 {
+				seen[tagLower] = true
+				uniqueTags = append(uniqueTags, tag)
+			}
+		}
+		tags = uniqueTags
+		fmt.Printf("  🏷️ 태그 입력: %v\n", tags)
+
+		page.MustEval(`() => window.scrollTo(0, document.body.scrollHeight)`)
+		time.Sleep(1 * time.Second)
+
+		for i, tag := range tags {
+			page.MustEval(`(tag) => {
+				const selectors = [
+					'input[placeholder*="태그"]',
+					'.tag-input input',
+					'#tagText',
+					'input.tf_g'
+				];
+				let input = null;
+				for (const sel of selectors) {
+					input = document.querySelector(sel);
+					if (input) break;
+				}
+				if (input) {
+					input.focus();
+					input.value = tag;
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+					const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true });
+					input.dispatchEvent(enterEvent);
+					return true;
+				}
+				return false;
+			}`, tag)
+			time.Sleep(300 * time.Millisecond)
+			fmt.Printf("    [%d/%d] 태그 추가: %s\n", i+1, len(tags), tag)
+		}
+	}
+
+	// 카테고리 선택
+	if categoryName != "" {
+		fmt.Printf("  📂 카테고리 선택: %s\n", categoryName)
+		page.MustEval(`(categoryName) => {
+			const dropdown = document.querySelector('.category-btn') || document.querySelector('[class*="category"]');
+			if (dropdown) dropdown.click();
+		}`, categoryName)
+		time.Sleep(500 * time.Millisecond)
+
+		page.MustEval(`(categoryName) => {
+			const items = document.querySelectorAll('.category-item, [class*="category"] li, [class*="category"] a');
+			for (const item of items) {
+				if (item.textContent.includes(categoryName)) {
+					item.click();
+					return true;
+				}
+			}
+			return false;
+		}`, categoryName)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// 완료 버튼 클릭
+	fmt.Println("  📤 발행 중...")
+	page.MustEval(`() => {
+		const btns = document.querySelectorAll('button, .btn, [class*="publish"], [class*="complete"]');
+		for (const btn of btns) {
+			if (btn.textContent.includes('완료') || btn.textContent.includes('발행') || btn.textContent.includes('공개')) {
+				btn.click();
+				return true;
+			}
+		}
+		return false;
+	}`)
+	time.Sleep(2 * time.Second)
+
+	// 공개 발행 옵션 선택
+	page.MustEval(`() => {
+		const options = document.querySelectorAll('[class*="option"], label, .radio-item');
+		for (const opt of options) {
+			if (opt.textContent.includes('공개') || opt.textContent.includes('발행')) {
+				opt.click();
+				return true;
+			}
+		}
+		return false;
+	}`)
+	time.Sleep(1 * time.Second)
+
+	// 최종 발행 버튼
+	page.MustEval(`() => {
+		const btns = document.querySelectorAll('button, .btn');
+		for (const btn of btns) {
+			if (btn.textContent.includes('발행') || btn.textContent.includes('완료')) {
+				btn.click();
+				return true;
+			}
+		}
+		return false;
+	}`)
+
+	time.Sleep(5 * time.Second)
+	fmt.Println("  ✅ 포스팅 완료!")
+
+	// 결과 URL
+	currentURL := ""
+	if info, err := page.Info(); err == nil {
+		currentURL = info.URL
+	}
+
+	postID := ""
+	if strings.Contains(currentURL, "/") {
+		parts := strings.Split(currentURL, "/")
+		postID = parts[len(parts)-1]
+	}
+
+	_ = page.Close()
+
+	return &PostResult{
+		PostID: postID,
+		URL:    fmt.Sprintf("https://%s.tistory.com/%s", c.blogName, postID),
+	}, nil
+}
+
+// uploadThumbnail 썸네일 업로드
+func (c *Client) uploadThumbnail(page *rod.Page, thumbnailPath string) error {
+	// 이미지 첨부 버튼 찾기 및 클릭
+	page.MustEval(`() => {
+		const imgBtn = document.querySelector('[data-name="image"]') || 
+		               document.querySelector('[title*="이미지"]') ||
+		               document.querySelector('[class*="image-btn"]') ||
+		               document.querySelector('button[class*="photo"]');
+		if (imgBtn) {
+			imgBtn.click();
+			return true;
+		}
+		// 툴바에서 이미지 아이콘 찾기
+		const toolbar = document.querySelector('.mce-toolbar, .editor-toolbar, [class*="toolbar"]');
+		if (toolbar) {
+			const btns = toolbar.querySelectorAll('button, [role="button"]');
+			for (const btn of btns) {
+				if (btn.getAttribute('aria-label')?.includes('이미지') || 
+				    btn.getAttribute('title')?.includes('이미지') ||
+				    btn.querySelector('[class*="image"]')) {
+					btn.click();
+					return true;
+				}
+			}
+		}
+		return false;
+	}`)
+	time.Sleep(1 * time.Second)
+
+	// 파일 input 찾아서 파일 설정
+	fileInput := page.MustElement(`input[type="file"]`)
+	if fileInput != nil {
+		fileInput.MustSetFiles(thumbnailPath)
+		time.Sleep(3 * time.Second) // 업로드 대기
+		return nil
+	}
+
+	return fmt.Errorf("파일 업로드 요소를 찾을 수 없음")
+}
+
 // TestLogin 로그인 테스트
 func (c *Client) TestLogin(ctx context.Context) error {
 	if err := c.Connect(); err != nil {
