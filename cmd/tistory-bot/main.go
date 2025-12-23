@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Song-wh/tistory-bot/internal/analytics"
 	"github.com/Song-wh/tistory-bot/internal/collector"
 	"github.com/Song-wh/tistory-bot/internal/config"
 	"github.com/Song-wh/tistory-bot/internal/thumbnail"
@@ -627,9 +628,172 @@ func runPostForAccount(cfg *config.Config, acc *config.AccountConfig, category s
 	fmt.Printf("  ✅ [%s] 포스팅 완료: %s\n", acc.Name, post.Title)
 }
 
+// analytics 명령어 - 콘텐츠 성과 분석
+var analyticsCmd = &cobra.Command{
+	Use:   "analytics",
+	Short: "콘텐츠 성과 분석 📊",
+	Long: `블로그 콘텐츠의 성과를 분석합니다.
+
+하위 명령어:
+  collect  - 통계 데이터 수집 (티스토리에서)
+  report   - 분석 리포트 생성
+  optimize - 스케줄 최적화 제안`,
+}
+
+// analytics collect 명령어
+var analyticsCollectCmd = &cobra.Command{
+	Use:   "collect",
+	Short: "통계 데이터 수집",
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			fmt.Printf("설정 로드 실패: %v\n", err)
+			os.Exit(1)
+		}
+
+		accounts := getTargetAccounts(cfg)
+		if len(accounts) == 0 {
+			fmt.Println("❌ 활성화된 계정이 없습니다.")
+			os.Exit(1)
+		}
+
+		ctx := context.Background()
+
+		for _, acc := range accounts {
+			fmt.Printf("\n📊 [%s] 통계 수집 시작...\n", acc.Name)
+
+			dataDir := "./analytics_data"
+			analyzer := analytics.NewAnalyzer(
+				acc.Tistory.BlogName,
+				acc.Tistory.Email,
+				acc.Tistory.Password,
+				cfg.Browser.Headless,
+				cfg.Browser.SlowMotion,
+				dataDir,
+			)
+
+			stats, err := analyzer.CollectStats(ctx)
+			if err != nil {
+				fmt.Printf("  ❌ 수집 실패: %v\n", err)
+				continue
+			}
+
+			fmt.Printf("  ✅ %d개 포스트 통계 수집 완료!\n", len(stats))
+		}
+	},
+}
+
+// analytics report 명령어
+var analyticsReportCmd = &cobra.Command{
+	Use:   "report",
+	Short: "분석 리포트 생성",
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			fmt.Printf("설정 로드 실패: %v\n", err)
+			os.Exit(1)
+		}
+
+		accounts := getTargetAccounts(cfg)
+		if len(accounts) == 0 {
+			fmt.Println("❌ 활성화된 계정이 없습니다.")
+			os.Exit(1)
+		}
+
+		for _, acc := range accounts {
+			dataDir := "./analytics_data"
+			analyzer := analytics.NewAnalyzer(
+				acc.Tistory.BlogName,
+				acc.Tistory.Email,
+				acc.Tistory.Password,
+				cfg.Browser.Headless,
+				cfg.Browser.SlowMotion,
+				dataDir,
+			)
+
+			// 저장된 통계 로드 (없으면 시뮬레이션)
+			stats, err := analyzer.LoadStats()
+			if err != nil || len(stats) == 0 {
+				fmt.Printf("⚠️ [%s] 저장된 통계 없음, 시뮬레이션 데이터로 분석\n", acc.Name)
+				stats = analyzer.GetSimulatedStats()
+			}
+
+			if len(stats) == 0 {
+				fmt.Printf("❌ [%s] 분석할 데이터가 없습니다.\n", acc.Name)
+				continue
+			}
+
+			// 리포트 생성 및 출력
+			report := analyzer.GenerateReport(stats)
+			analyzer.PrintReport(report)
+		}
+	},
+}
+
+// analytics optimize 명령어
+var analyticsOptimizeCmd = &cobra.Command{
+	Use:   "optimize",
+	Short: "스케줄 최적화 제안",
+	Run: func(cmd *cobra.Command, args []string) {
+		cfg, err := config.Load(cfgFile)
+		if err != nil {
+			fmt.Printf("설정 로드 실패: %v\n", err)
+			os.Exit(1)
+		}
+
+		accounts := getTargetAccounts(cfg)
+		if len(accounts) == 0 {
+			fmt.Println("❌ 활성화된 계정이 없습니다.")
+			os.Exit(1)
+		}
+
+		for _, acc := range accounts {
+			dataDir := "./analytics_data"
+			analyzer := analytics.NewAnalyzer(
+				acc.Tistory.BlogName,
+				acc.Tistory.Email,
+				acc.Tistory.Password,
+				cfg.Browser.Headless,
+				cfg.Browser.SlowMotion,
+				dataDir,
+			)
+
+			stats, err := analyzer.LoadStats()
+			if err != nil || len(stats) == 0 {
+				fmt.Printf("⚠️ [%s] 저장된 통계 없음, 시뮬레이션 데이터 사용\n", acc.Name)
+				stats = analyzer.GetSimulatedStats()
+			}
+
+			if len(stats) == 0 {
+				fmt.Printf("❌ [%s] 분석할 데이터가 없습니다.\n", acc.Name)
+				continue
+			}
+
+			report := analyzer.GenerateReport(stats)
+			optimizedSchedule := analyzer.GetOptimizedSchedule(report)
+
+			fmt.Printf("\n🎯 [%s] 최적화된 스케줄 제안\n", acc.Name)
+			fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+			fmt.Println("config.yaml의 schedule.jobs에 적용하세요:\n")
+
+			for category, cron := range optimizedSchedule {
+				fmt.Printf("- category: %s\n", category)
+				fmt.Printf("  cron: \"%s\"\n\n", cron)
+			}
+
+			fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+		}
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.yaml", "설정 파일 경로")
 	rootCmd.PersistentFlags().StringVar(&accountName, "account", "", "특정 계정만 실행 (생략시 전체)")
+
+	// analytics 하위 명령어 등록
+	analyticsCmd.AddCommand(analyticsCollectCmd)
+	analyticsCmd.AddCommand(analyticsReportCmd)
+	analyticsCmd.AddCommand(analyticsOptimizeCmd)
 
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(postCmd)
@@ -637,6 +801,7 @@ func init() {
 	rootCmd.AddCommand(categoriesCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(scheduleCmd)
+	rootCmd.AddCommand(analyticsCmd)
 }
 
 func main() {
