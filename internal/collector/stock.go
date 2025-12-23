@@ -564,25 +564,45 @@ func (s *StockCollector) GenerateCryptoPost(cryptos []CryptoData) *Post {
 
 	content.WriteString(`</div>`)
 
-	// 공격적인 태그 전략
+	// 동적 태그 생성 (실제 코인 데이터 기반)
 	tags := []string{
-		// 기본 코인 태그
-		"비트코인", "이더리움", "코인시세", "암호화폐", "가상화폐",
-		"BTC", "ETH", "Bitcoin", "Ethereum",
-		// 분석 태그
-		"코인분석", "공포탐욕지수", "코인전망", "비트코인전망", "이더리움전망",
-		"암호화폐분석", "코인투자", "가상화폐시세",
+		// 기본 태그
+		"코인시세", "암호화폐", "가상화폐",
 		// 시간대 태그
-		now.Format("01월02일코인"), now.Format("2006년01월") + "코인시세",
-		// 인기 키워드
-		"코인뉴스", "암호화폐뉴스", "비트코인가격", "이더리움가격",
-		"리플", "솔라나", "도지코인", "에이다",
-		// 트렌드 키워드
-		"비트코인오늘", "코인오늘시세", "암호화폐전망", "코인추천",
+		now.Format("01월02일") + "코인", now.Format("01월02일") + "비트코인",
 	}
-	for _, rec := range recommendations[:min(3, len(recommendations))] {
-		tags = append(tags, rec.Coin.Name)
-		tags = append(tags, rec.Coin.Name+"전망")
+
+	// 📌 실제 코인 이름을 태그로 (핵심!)
+	for _, crypto := range cryptos {
+		// 코인 이름
+		tags = append(tags, crypto.Name)
+		tags = append(tags, crypto.Name+"시세")
+		tags = append(tags, crypto.Name+"전망")
+		// 심볼도 추가
+		tags = append(tags, crypto.Symbol)
+	}
+
+	// 📌 추천 코인 강조 태그
+	for _, rec := range recommendations {
+		tags = append(tags, rec.Coin.Name+"추천")
+		tags = append(tags, rec.Coin.Name+"분석")
+	}
+
+	// 공포탐욕지수 기반 동적 태그
+	switch {
+	case fearGreed.Value <= 25:
+		tags = append(tags, "코인폭락", "코인매수타이밍", "공포장세")
+	case fearGreed.Value >= 75:
+		tags = append(tags, "코인상승", "불장", "탐욕장세")
+	}
+
+	// 상승/하락 동적 태그
+	for _, crypto := range cryptos[:min(5, len(cryptos))] {
+		if crypto.Change24h > 5 {
+			tags = append(tags, crypto.Name+"급등")
+		} else if crypto.Change24h < -5 {
+			tags = append(tags, crypto.Name+"급락")
+		}
 	}
 
 	return &Post{

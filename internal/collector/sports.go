@@ -297,22 +297,40 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 </div>
 `)
 
-	// 공격적인 태그 전략
+	// 동적 태그 생성 (실제 뉴스 기반)
 	tags := []string{
 		// 기본 태그
-		"스포츠", "스포츠뉴스", "오늘의스포츠",
-		// 축구
-		"축구", "손흥민", "이강인", "토트넘", "PSG", "프리미어리그", "K리그", "해외축구", "국내축구",
-		// 야구
-		"야구", "프로야구", "KBO", "MLB", "류현진", "메이저리그", "스토브리그",
-		// 농구
-		"농구", "NBA", "KBL", "프로농구",
-		// 팀명
-		"기아타이거즈", "삼성라이온즈", "LG트윈스", "두산베어스",
-		// 날짜 태그
-		now.Format("01월02일"), now.Format("2006년01월"), "오늘경기결과",
-		// 검색 키워드
-		"스포츠결과", "경기결과", "순위", "하이라이트",
+		"스포츠", "스포츠뉴스",
+		// 시간대 태그
+		now.Format("01월02일") + "스포츠", now.Format("01월02일") + "경기결과",
+	}
+
+	// 📌 실제 뉴스 제목에서 키워드 추출 (핵심!)
+	for _, item := range news {
+		// 카테고리 태그
+		tags = append(tags, item.Category)
+		tags = append(tags, item.Category+"뉴스")
+
+		// 제목에서 주요 키워드 추출
+		keywords := []string{"손흥민", "이강인", "류현진", "김하성", "이정후", "오타니"}
+		for _, kw := range keywords {
+			if strings.Contains(item.Title, kw) {
+				tags = append(tags, kw)
+				tags = append(tags, kw+"뉴스")
+			}
+		}
+	}
+
+	// 종목별 태그
+	for category := range categories {
+		switch category {
+		case "축구":
+			tags = append(tags, "축구", "프리미어리그", "K리그", "해외축구")
+		case "야구":
+			tags = append(tags, "야구", "KBO", "MLB", "프로야구")
+		case "농구":
+			tags = append(tags, "농구", "NBA", "KBL")
+		}
 	}
 
 	return &Post{
