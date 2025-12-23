@@ -482,7 +482,7 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		post = c.GenerateWeatherPost(weathers)
 
 	case "fortune":
-		c := collector.NewFortuneCollector()
+		c := collector.NewFortuneCollector(acc.Coupang.PartnerID)
 		fortunes := c.GetTodayFortune()
 		post = c.GenerateFortunePost(fortunes)
 
