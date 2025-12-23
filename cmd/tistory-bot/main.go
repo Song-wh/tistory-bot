@@ -434,7 +434,7 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		post = c.GenerateTechPost(news)
 
 	case "movie":
-		c := collector.NewMovieCollector(cfg.TMDB.APIKey)
+		c := collector.NewMovieCollector(cfg.TMDB.APIKey, acc.Coupang.PartnerID)
 		movies, err := c.GetNowPlaying(ctx, 10)
 		if err != nil {
 			fmt.Printf("    ❌ 수집 실패: %v\n", err)
@@ -487,7 +487,7 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		post = c.GenerateFortunePost(fortunes)
 
 	case "sports":
-		c := collector.NewSportsCollector()
+		c := collector.NewSportsCollector(acc.Coupang.PartnerID)
 		news, err := c.GetSportsNews(ctx)
 		if err != nil {
 			fmt.Printf("    ❌ 수집 실패: %v\n", err)
