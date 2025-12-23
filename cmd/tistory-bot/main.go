@@ -444,10 +444,13 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 
 	case "trend":
 		c := collector.NewTrendCollector()
-		trends, err := c.GetGoogleTrends(ctx, 10)
+		// 실제 API 연동: 구글 트렌드 RSS + 네이버 뉴스 RSS
+		trends, err := c.GetAllTrends(ctx)
 		if err != nil {
-			fmt.Printf("    ❌ 수집 실패: %v\n", err)
-			return nil
+			fmt.Printf("    ⚠️ 실시간 트렌드 수집 실패, 백업 데이터 사용: %v\n", err)
+		}
+		if len(trends) > 15 {
+			trends = trends[:15] // 최대 15개
 		}
 		post = c.GenerateTrendPost(trends)
 
@@ -487,11 +490,16 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 		post = c.GenerateFortunePost(fortunes)
 
 	case "sports":
-		c := collector.NewSportsCollector(acc.Coupang.PartnerID)
+		// 실시간 스포츠 API 연동 (Football-Data.org, NBA API)
+		footballAPIKey := ""
+		if cfg.FootballData != nil {
+			footballAPIKey = cfg.FootballData.APIKey
+		}
+		c := collector.NewSportsCollectorWithAPI(acc.Coupang.PartnerID, footballAPIKey)
 		news, err := c.GetSportsNews(ctx)
 		if err != nil {
-			fmt.Printf("    ❌ 수집 실패: %v\n", err)
-			return nil
+			fmt.Printf("    ⚠️ 실시간 스포츠 뉴스 수집 실패: %v\n", err)
+			// 경기 데이터는 GenerateSportsPost 내부에서 자동 처리
 		}
 		post = c.GenerateSportsPost(news)
 

@@ -12,13 +12,19 @@ type Config struct {
 	Accounts []AccountConfig `yaml:"accounts"`
 
 	// 전역 설정 (하위 호환성)
-	Tistory    TistoryConfig     `yaml:"tistory"`
-	Browser    BrowserConfig     `yaml:"browser"`
-	TMDB       TMDBConfig        `yaml:"tmdb"`
-	Naver      NaverConfig       `yaml:"naver"`
-	Coupang    CoupangConfig     `yaml:"coupang"`
-	Categories map[string]string `yaml:"categories"`
-	Schedule   ScheduleConfig    `yaml:"schedule"`
+	Tistory      TistoryConfig      `yaml:"tistory"`
+	Browser      BrowserConfig      `yaml:"browser"`
+	TMDB         TMDBConfig         `yaml:"tmdb"`
+	Naver        NaverConfig        `yaml:"naver"`
+	Coupang      CoupangConfig      `yaml:"coupang"`
+	FootballData *FootballDataConfig `yaml:"football_data"` // 스포츠 API (선택)
+	Categories   map[string]string  `yaml:"categories"`
+	Schedule     ScheduleConfig     `yaml:"schedule"`
+}
+
+// FootballDataConfig 스포츠 API 설정
+type FootballDataConfig struct {
+	APIKey string `yaml:"api_key"`
 }
 
 // AccountConfig 개별 계정 설정

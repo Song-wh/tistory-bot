@@ -275,9 +275,20 @@ func (c *Client) WritePost(ctx context.Context, title, content, categoryName str
 	time.Sleep(3 * time.Second)
 	fmt.Println("  📝 본문 입력 완료")
 
-	// 태그 입력
+	// 태그 입력 (티스토리 최대 10개 제한)
 	if len(tags) > 0 {
-		fmt.Printf("  🏷️ 태그 입력: %v\n", tags)
+		// 중복 제거 및 10개 제한
+		uniqueTags := make([]string, 0, 10)
+		seen := make(map[string]bool)
+		for _, tag := range tags {
+			tagLower := strings.ToLower(strings.TrimSpace(tag))
+			if tagLower != "" && !seen[tagLower] && len(uniqueTags) < 10 {
+				seen[tagLower] = true
+				uniqueTags = append(uniqueTags, tag)
+			}
+		}
+		tags = uniqueTags
+		fmt.Printf("  🏷️ 태그 입력 (최대 10개): %v\n", tags)
 
 		// 페이지 하단으로 스크롤
 		page.MustEval(`() => window.scrollTo(0, document.body.scrollHeight)`)
