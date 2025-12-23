@@ -712,8 +712,20 @@ func (g *GolfCollector) GenerateGolfPost(ctx context.Context) *Post {
 
 	content.WriteString(`</div>`) // container 끝
 
-	// 태그 생성
-	tags := []string{"골프날씨", "골프장추천", "경기도골프장", "골프", "라운딩"}
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 태그
+		"골프날씨", "골프장추천", "골프", "라운딩", "골프예약",
+		// 지역 태그
+		"경기도골프장", "강원도골프장", "충청도골프장", "전라도골프장", "경상도골프장", "제주도골프장",
+		// 인기 키워드
+		"골프장예약", "골프장가격", "골프장날씨", "내일골프날씨",
+		"골프라운딩", "주말골프", "골프장추천", "가성비골프장",
+		// 시간대 태그
+		time.Now().Format("01월") + "골프", time.Now().Format("01월02일") + "골프날씨",
+		// 트렌드 키워드
+		"골프여행", "골프투어", "골프장예약사이트", "골프부킹",
+	}
 	for _, data := range weatherData {
 		tags = append(tags, data.Region.Name+"골프장")
 	}

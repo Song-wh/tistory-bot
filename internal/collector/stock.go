@@ -564,10 +564,25 @@ func (s *StockCollector) GenerateCryptoPost(cryptos []CryptoData) *Post {
 
 	content.WriteString(`</div>`)
 
-	// 태그
-	tags := []string{"비트코인", "이더리움", "코인시세", "암호화폐", "가상화폐", "코인분석", "공포탐욕지수"}
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 코인 태그
+		"비트코인", "이더리움", "코인시세", "암호화폐", "가상화폐",
+		"BTC", "ETH", "Bitcoin", "Ethereum",
+		// 분석 태그
+		"코인분석", "공포탐욕지수", "코인전망", "비트코인전망", "이더리움전망",
+		"암호화폐분석", "코인투자", "가상화폐시세",
+		// 시간대 태그
+		now.Format("01월02일코인"), now.Format("2006년01월") + "코인시세",
+		// 인기 키워드
+		"코인뉴스", "암호화폐뉴스", "비트코인가격", "이더리움가격",
+		"리플", "솔라나", "도지코인", "에이다",
+		// 트렌드 키워드
+		"비트코인오늘", "코인오늘시세", "암호화폐전망", "코인추천",
+	}
 	for _, rec := range recommendations[:min(3, len(recommendations))] {
 		tags = append(tags, rec.Coin.Name)
+		tags = append(tags, rec.Coin.Name+"전망")
 	}
 
 	return &Post{

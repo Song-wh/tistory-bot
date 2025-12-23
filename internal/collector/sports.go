@@ -21,6 +21,7 @@ type SportsNews struct {
 	Category    string
 	ImageURL    string
 	Source      string
+	SourceURL   string
 	PubDate     string
 }
 
@@ -84,19 +85,22 @@ func (s *SportsCollector) getSimulatedNews(category string) []SportsNews {
 				Title:       fmt.Sprintf("[%s] 손흥민, 시즌 10호골 폭발! 토트넘 승리 이끌어", dateStr),
 				Description: "손흥민이 프리미어리그에서 시즌 10호골을 기록하며 팀의 승리를 이끌었다. 이로써 손흥민은 아시아 선수 최다 골 기록을 경신했다.",
 				Category:    "축구",
-				Source:      "스포츠조선",
+				Source:      "네이버 스포츠",
+				SourceURL:   "https://sports.news.naver.com/wfootball/index",
 			},
 			{
 				Title:       fmt.Sprintf("[%s] K리그 2025시즌 일정 발표, 개막전 3월 1일", dateStr),
 				Description: "한국프로축구연맹이 2025시즌 K리그 일정을 발표했다. 개막전은 3월 1일로 예정되어 있으며, 전북 현대와 울산 HD의 빅매치로 시작된다.",
 				Category:    "축구",
-				Source:      "스포츠서울",
+				Source:      "K리그 공식",
+				SourceURL:   "https://www.kleague.com",
 			},
 			{
 				Title:       fmt.Sprintf("[%s] 이강인, 파리 생제르맹 주전 경쟁 치열", dateStr),
 				Description: "이강인이 PSG에서 주전 경쟁에 나서고 있다. 최근 경기에서 좋은 활약을 보이며 출전 시간을 늘려가고 있다.",
 				Category:    "축구",
-				Source:      "엑스포츠뉴스",
+				Source:      "네이버 스포츠",
+				SourceURL:   "https://sports.news.naver.com/wfootball/index",
 			},
 		},
 		"야구": {
@@ -104,19 +108,22 @@ func (s *SportsCollector) getSimulatedNews(category string) []SportsNews {
 				Title:       fmt.Sprintf("[%s] MLB 겨울 FA 시장, 대형 계약 속출", dateStr),
 				Description: "MLB 겨울 FA 시장이 뜨겁다. 여러 구단들이 대형 계약을 체결하며 내년 시즌을 준비하고 있다.",
 				Category:    "야구",
-				Source:      "스포츠동아",
+				Source:      "MLB 공식",
+				SourceURL:   "https://www.mlb.com",
 			},
 			{
 				Title:       fmt.Sprintf("[%s] KBO 스토브리그, 각 구단 영입 현황 총정리", dateStr),
 				Description: "KBO 스토브리그가 한창이다. 각 구단별 영입 현황과 전력 보강 상황을 살펴본다.",
 				Category:    "야구",
-				Source:      "일간스포츠",
+				Source:      "KBO 공식",
+				SourceURL:   "https://www.koreabaseball.com",
 			},
 			{
 				Title:       fmt.Sprintf("[%s] 류현진, 재활 순항 중 \"내년 시즌 복귀 목표\"", dateStr),
 				Description: "류현진이 재활을 성공적으로 진행하고 있다. 내년 시즌 복귀를 목표로 열심히 훈련 중이라고 밝혔다.",
 				Category:    "야구",
-				Source:      "스포츠조선",
+				Source:      "네이버 스포츠",
+				SourceURL:   "https://sports.news.naver.com/kbaseball/index",
 			},
 		},
 		"농구": {
@@ -124,13 +131,15 @@ func (s *SportsCollector) getSimulatedNews(category string) []SportsNews {
 				Title:       fmt.Sprintf("[%s] NBA 정규시즌, 각 팀 순위 현황", dateStr),
 				Description: "NBA 정규시즌이 진행 중이다. 동부와 서부 컨퍼런스 각 팀의 순위 현황을 정리했다.",
 				Category:    "농구",
-				Source:      "스포티비뉴스",
+				Source:      "NBA 공식",
+				SourceURL:   "https://www.nba.com",
 			},
 			{
 				Title:       fmt.Sprintf("[%s] KBL 프로농구, 치열한 순위 경쟁", dateStr),
 				Description: "KBL 프로농구가 치열한 순위 경쟁을 펼치고 있다. 상위권 팀들의 격차가 좁혀지며 흥미진진한 경기가 이어지고 있다.",
 				Category:    "농구",
-				Source:      "OSEN",
+				Source:      "KBL 공식",
+				SourceURL:   "https://www.kbl.or.kr",
 			},
 		},
 	}
@@ -214,13 +223,17 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 `, emoji, category))
 
 		for _, item := range items {
+			sourceLink := item.Source
+			if item.SourceURL != "" {
+				sourceLink = fmt.Sprintf(`<a href="%s" target="_blank" style="color: #0984e3; text-decoration: none;">%s 바로가기 →</a>`, item.SourceURL, item.Source)
+			}
 			content.WriteString(fmt.Sprintf(`
 <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 15px 0; border-left: 3px solid #00b894;">
   <h4 style="margin: 0 0 10px 0; color: #2d3436;">%s</h4>
   <p style="color: #636e72; line-height: 1.6; margin: 0;">%s</p>
   <p style="color: #b2bec3; font-size: 0.85em; margin: 10px 0 0 0;">📰 %s</p>
 </div>
-`, item.Title, item.Description, item.Source))
+`, item.Title, item.Description, sourceLink))
 		}
 	}
 
@@ -284,10 +297,28 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 </div>
 `)
 
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 태그
+		"스포츠", "스포츠뉴스", "오늘의스포츠",
+		// 축구
+		"축구", "손흥민", "이강인", "토트넘", "PSG", "프리미어리그", "K리그", "해외축구", "국내축구",
+		// 야구
+		"야구", "프로야구", "KBO", "MLB", "류현진", "메이저리그", "스토브리그",
+		// 농구
+		"농구", "NBA", "KBL", "프로농구",
+		// 팀명
+		"기아타이거즈", "삼성라이온즈", "LG트윈스", "두산베어스",
+		// 날짜 태그
+		now.Format("01월02일"), now.Format("2006년01월"), "오늘경기결과",
+		// 검색 키워드
+		"스포츠결과", "경기결과", "순위", "하이라이트",
+	}
+
 	return &Post{
 		Title:    title,
 		Content:  content.String(),
 		Category: "스포츠",
-		Tags:     []string{"스포츠", "프로야구", "축구", "NBA", "KBO", "손흥민", now.Format("01월02일")},
+		Tags:     tags,
 	}
 }

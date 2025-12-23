@@ -187,11 +187,36 @@ func (m *MovieCollector) GenerateMoviePost(movies []Movie, postType string) *Pos
 `, i+1, movie.Title, movie.VoteAverage, movie.ReleaseDate, truncate(movie.Overview, 150)))
 	}
 
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 태그
+		"영화", "드라마", "영화추천", "드라마추천",
+		"넷플릭스", "넷플릭스추천", "Netflix",
+		// 박스오피스 태그
+		"박스오피스", "현재상영", "개봉예정", "상영영화",
+		// 플랫폼 태그
+		"왓챠", "디즈니플러스", "티빙", "쿠팡플레이", "웨이브",
+		// 시간대 태그
+		now.Format("01월") + "영화", now.Format("2006년") + "영화추천",
+		// 인기 키워드
+		"영화순위", "드라마순위", "인기영화", "인기드라마",
+		"이번주영화", "신작영화", "신작드라마",
+		// 장르 태그
+		"액션영화", "로맨스영화", "코미디영화", "스릴러영화",
+	}
+	// 영화 제목을 태그에 추가
+	for i, movie := range movies {
+		if i >= 5 {
+			break
+		}
+		tags = append(tags, movie.Title)
+	}
+
 	return &Post{
 		Title:    title,
 		Content:  content.String(),
 		Category: CategoryMovie,
-		Tags:     []string{"영화", "드라마", "넷플릭스", "개봉예정", "박스오피스"},
+		Tags:     tags,
 	}
 }
 

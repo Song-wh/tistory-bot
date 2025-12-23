@@ -502,11 +502,30 @@ func (l *LottoCollector) GeneratePredictionPost(nextRound int, predictions []Lot
 </div>
 `)
 
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 태그
+		"로또예측", "로또번호추천", "로또분석", "행운의번호",
+		"로또", "Lotto", "복권",
+		// 회차 태그
+		fmt.Sprintf("%d회로또예측", nextRound),
+		fmt.Sprintf("%d회로또", nextRound),
+		fmt.Sprintf("로또%d회", nextRound),
+		// 인기 키워드
+		"로또당첨번호", "이번주로또", "로또번호생성", "로또추천",
+		"로또분석기", "로또예측기", "로또행운번호",
+		// 시간대 태그
+		time.Now().Format("01월") + "로또", time.Now().Format("2006년") + "로또예측",
+		// 트렌드 키워드
+		"로또당첨확률", "로또번호조합", "로또1등번호",
+		"무료로또예측", "AI로또예측", "로또번호추천기",
+	}
+
 	return &Post{
 		Title:    title,
 		Content:  content.String(),
 		Category: "로또/복권",
-		Tags:     []string{"로또예측", "로또번호추천", fmt.Sprintf("%d회로또예측", nextRound), "로또분석", "행운의번호"},
+		Tags:     tags,
 	}
 }
 

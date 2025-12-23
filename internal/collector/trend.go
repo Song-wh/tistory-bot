@@ -147,11 +147,33 @@ func (t *TrendCollector) GenerateTrendPost(trends []Trend) *Post {
 <p>실시간으로 변동되므로 참고용으로만 활용해주세요.</p>
 `)
 
+	// 공격적인 태그 전략
+	tags := []string{
+		// 기본 태그
+		"실시간검색어", "트렌드", "인기검색어", "핫이슈", "화제",
+		"실검", "실시간트렌드", "인기키워드",
+		// 시간대 태그
+		now.Format("01월02일"), now.Format("01월02일") + "실검",
+		now.Format("2006년01월") + "트렌드",
+		// 플랫폼 태그
+		"네이버실검", "구글트렌드", "다음실검",
+		// 인기 키워드
+		"오늘화제", "지금인기", "핫키워드", "급상승검색어",
+		"이슈", "오늘이슈", "실시간이슈",
+	}
+	// 검색어를 태그에 추가 (상위 5개)
+	for i, trend := range trends {
+		if i >= 5 {
+			break
+		}
+		tags = append(tags, trend.Keyword)
+	}
+
 	return &Post{
 		Title:    title,
 		Content:  content.String(),
 		Category: CategoryTrend,
-		Tags:     []string{"실시간검색어", "트렌드", "인기검색어", "핫이슈", "화제"},
+		Tags:     tags,
 	}
 }
 

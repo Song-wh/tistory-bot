@@ -659,8 +659,22 @@ func (c *ErrorArchiveCollector) GenerateErrorPost(ctx context.Context) *Post {
 
 	content.WriteString(`</div>`)
 
-	// 태그 생성
-	tags := []string{mainError.Language + "에러", mainError.Language + "해결", "프로그래밍에러", "개발에러해결", "코딩에러"}
+	// 공격적인 태그 전략
+	langLower := strings.ToLower(mainError.Language)
+	tags := []string{
+		// 기본 태그
+		mainError.Language + "에러", mainError.Language + "해결", mainError.Language + "오류",
+		"프로그래밍에러", "개발에러해결", "코딩에러",
+		// 언어별 태그
+		langLower + "error", langLower + "버그", langLower + "디버깅",
+		// 인기 키워드
+		"에러해결", "오류해결", "버그수정", "디버깅", "트러블슈팅",
+		"개발자팁", "코딩팁", "프로그래밍팁",
+		// 플랫폼 태그
+		"StackOverflow", "GitHub", "개발블로그",
+		// 검색 키워드
+		"에러메시지", "에러코드", "에러원인", "에러해결방법",
+	}
 	tags = append(tags, mainError.Tags...)
 
 	return &Post{
