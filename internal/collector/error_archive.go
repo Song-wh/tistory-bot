@@ -549,9 +549,9 @@ func (c *ErrorArchiveCollector) GenerateErrorPost(ctx context.Context) *Post {
 	// 메인 에러 선택
 	mainError := errors[0]
 
-	// SEO 최적화 제목
+	// SEO 최적화 제목 (에러 메시지 전체 표시)
 	title := fmt.Sprintf("[%s] %s - 원인과 해결방법 완벽 정리",
-		mainError.Language, c.truncateTitle(mainError.ErrorMsg, 50))
+		mainError.Language, mainError.ErrorMsg)
 
 	// 본문 생성
 	var content strings.Builder

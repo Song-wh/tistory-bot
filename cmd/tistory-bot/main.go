@@ -21,6 +21,9 @@ import (
 var cfgFile string
 var accountName string // 특정 계정만 실행할 때 사용
 
+// 전역 클라이언트 맵 (브라우저 재사용)
+var clientMap = make(map[string]*tistory.Client)
+
 var rootCmd = &cobra.Command{
 	Use:   "tistory-bot",
 	Short: "티스토리 자동 포스팅 봇 (다중 계정 지원)",
@@ -369,6 +372,26 @@ var scheduleCmd = &cobra.Command{
 		fmt.Printf("📋 활성 계정: %d개\n", len(accounts))
 		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
+		// 각 계정별로 브라우저 열고 로그인 (한 번만)
+		fmt.Println("\n🔐 계정별 브라우저 초기화 중...")
+		ctx := context.Background()
+		for _, acc := range accounts {
+			client := tistory.NewClient(
+				acc.Tistory.Email,
+				acc.Tistory.Password,
+				acc.Tistory.BlogName,
+				cfg.Browser.Headless,
+				cfg.Browser.SlowMotion,
+			)
+			if err := client.Login(ctx); err != nil {
+				fmt.Printf("  ❌ [%s] 로그인 실패: %v\n", acc.Name, err)
+				continue
+			}
+			clientMap[acc.Name] = client
+			fmt.Printf("  ✅ [%s] 브라우저 준비 완료\n", acc.Name)
+		}
+		fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
 		c := cron.New()
 
 		for _, acc := range accounts {
@@ -409,6 +432,13 @@ var scheduleCmd = &cobra.Command{
 
 		fmt.Println("\n🛑 스케줄러 종료...")
 		c.Stop()
+
+		// 모든 브라우저 닫기
+		fmt.Println("🔒 브라우저 종료 중...")
+		for name, client := range clientMap {
+			client.Close()
+			fmt.Printf("  ✅ [%s] 브라우저 종료\n", name)
+		}
 	},
 }
 
@@ -452,6 +482,15 @@ func generatePost(ctx context.Context, cfg *config.Config, acc *config.AccountCo
 			return nil
 		}
 		post = c.GenerateTechPost(news)
+
+	case "game":
+		c := collector.NewGameCollector(acc.Coupang.PartnerID)
+		news, err := c.GetGameNews(ctx)
+		if err != nil {
+			fmt.Printf("    ❌ 수집 실패: %v\n", err)
+			return nil
+		}
+		post = c.GenerateGamePost(news)
 
 	case "movie":
 		c := collector.NewMovieCollector(cfg.TMDB.APIKey, acc.Coupang.PartnerID)
@@ -602,14 +641,20 @@ func runPostForAccount(cfg *config.Config, acc *config.AccountConfig, category s
 		thumbGen.Cleanup()
 	}
 
-	client := tistory.NewClient(
-		acc.Tistory.Email,
-		acc.Tistory.Password,
-		acc.Tistory.BlogName,
-		cfg.Browser.Headless,
-		cfg.Browser.SlowMotion,
-	)
-	defer client.Close()
+	// 전역 클라이언트 사용 (스케줄러에서 미리 로그인된 상태)
+	client, exists := clientMap[acc.Name]
+	if !exists {
+		// 클라이언트가 없으면 새로 생성 (post 명령어 직접 실행 시)
+		client = tistory.NewClient(
+			acc.Tistory.Email,
+			acc.Tistory.Password,
+			acc.Tistory.BlogName,
+			cfg.Browser.Headless,
+			cfg.Browser.SlowMotion,
+		)
+		defer client.Close()
+	}
+	// 스케줄러에서 사용 시에는 Close하지 않음 (브라우저 유지)
 
 	var err error
 	if thumbnailPath != "" {

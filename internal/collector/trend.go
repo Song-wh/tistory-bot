@@ -26,6 +26,26 @@ type Trend struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// Google Trends RSS 전용 구조체
+type GoogleTrendsRSS struct {
+	XMLName xml.Name `xml:"rss"`
+	Channel struct {
+		Items []GoogleTrendItem `xml:"item"`
+	} `xml:"channel"`
+}
+
+type GoogleTrendItem struct {
+	Title     string           `xml:"title"`
+	Link      string           `xml:"link"`
+	NewsItems []GoogleNewsItem `xml:"http://trends.google.com/trending/rss news_item"`
+}
+
+type GoogleNewsItem struct {
+	Title  string `xml:"http://trends.google.com/trending/rss news_item_title"`
+	URL    string `xml:"http://trends.google.com/trending/rss news_item_url"`
+	Source string `xml:"http://trends.google.com/trending/rss news_item_source"`
+}
+
 // RSSFeed와 RSSItem은 tech.go에 정의되어 있음
 
 func NewTrendCollector() *TrendCollector {
@@ -37,7 +57,7 @@ func NewTrendCollector() *TrendCollector {
 // GetGoogleTrends 구글 트렌드 수집 (실제 RSS 연동)
 func (t *TrendCollector) GetGoogleTrends(ctx context.Context, limit int) ([]Trend, error) {
 	// Google Trends RSS (한국)
-	url := "https://trends.google.co.kr/trending/rss?geo=KR"
+	url := "https://trends.google.com/trending/rss?geo=KR"
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -55,24 +75,42 @@ func (t *TrendCollector) GetGoogleTrends(ctx context.Context, limit int) ([]Tren
 		return nil, fmt.Errorf("google trends RSS failed: %d", resp.StatusCode)
 	}
 
-	// RSS 파싱
-	var feed RSSFeed
+	// Google Trends 전용 RSS 파싱
+	var feed GoogleTrendsRSS
 	if err := decodeXML(resp.Body, &feed); err != nil {
 		return nil, err
 	}
 
 	var trends []Trend
-	for i, item := range feed.Channel.Items {
-		if i >= limit {
+	rank := 1
+	for _, item := range feed.Channel.Items {
+		if rank > limit {
 			break
 		}
+		keyword := cleanKeyword(item.Title)
+		// 빈 키워드 (외국어만 있는 경우) 건너뛰기
+		if keyword == "" {
+			continue
+		}
+
+		// 실제 뉴스 링크 추출 (news_item_url 사용)
+		newsLink := ""
+		if len(item.NewsItems) > 0 {
+			newsLink = item.NewsItems[0].URL
+		}
+		// 뉴스 링크가 없으면 구글 검색 링크로 대체
+		if newsLink == "" {
+			newsLink = fmt.Sprintf("https://www.google.com/search?q=%s", keyword)
+		}
+
 		trends = append(trends, Trend{
-			Rank:      i + 1,
-			Keyword:   cleanKeyword(item.Title),
-			Link:      item.Link,
+			Rank:      rank,
+			Keyword:   keyword,
+			Link:      newsLink,
 			Source:    "Google Trends",
 			UpdatedAt: time.Now(),
 		})
+		rank++
 	}
 
 	return trends, nil
@@ -112,16 +150,18 @@ func (t *TrendCollector) GetNaverNewsRSS(ctx context.Context, limit int) ([]Tren
 			}
 			// 제목에서 키워드 추출
 			keyword := extractKeyword(item.Title)
-			if keyword != "" {
-				trends = append(trends, Trend{
-					Rank:      rank,
-					Keyword:   keyword,
-					Link:      item.Link,
-					Source:    "네이버 뉴스",
-					UpdatedAt: time.Now(),
-				})
-				rank++
+			// 빈 키워드 또는 "NAVER"만 있는 경우 건너뛰기
+			if keyword == "" || keyword == "NAVER" || strings.HasSuffix(keyword, "NAVER") {
+				continue
 			}
+			trends = append(trends, Trend{
+				Rank:      rank,
+				Keyword:   keyword,
+				Link:      item.Link,
+				Source:    "네이버 뉴스",
+				UpdatedAt: time.Now(),
+			})
+			rank++
 		}
 	}
 
@@ -298,13 +338,23 @@ func (t *TrendCollector) GenerateTrendPost(trends []Trend) *Post {
 	}
 }
 
-// cleanKeyword 키워드 정리
+// cleanKeyword 키워드 정리 (한글/영문만 허용)
 func cleanKeyword(keyword string) string {
 	// HTML 태그 제거
 	re := regexp.MustCompile(`<[^>]*>`)
 	keyword = re.ReplaceAllString(keyword, "")
 	// 특수문자 정리
 	keyword = strings.TrimSpace(keyword)
+
+	// 한글 또는 영문이 포함되어 있는지 확인
+	hasKorean := regexp.MustCompile(`[가-힣]`).MatchString(keyword)
+	hasEnglish := regexp.MustCompile(`[a-zA-Z]`).MatchString(keyword)
+
+	// 한글이나 영문이 없으면 (외국어만 있으면) 빈 문자열 반환
+	if !hasKorean && !hasEnglish {
+		return ""
+	}
+
 	return keyword
 }
 
@@ -313,10 +363,22 @@ func extractKeyword(title string) string {
 	// "[기관명]" 등 제거
 	re := regexp.MustCompile(`\[[^\]]*\]`)
 	title = re.ReplaceAllString(title, "")
+
+	// " - 출처" 제거 (NAVER, 한겨레, 조선일보 등)
+	if idx := strings.LastIndex(title, " - "); idx > 0 {
+		title = title[:idx]
+	}
+
+	// " | 출처" 제거
+	if idx := strings.LastIndex(title, " | "); idx > 0 {
+		title = title[:idx]
+	}
+
 	// "..." 이후 제거
 	if idx := strings.Index(title, "..."); idx > 0 {
 		title = title[:idx]
 	}
+
 	// 30자 이상이면 자르기
 	title = strings.TrimSpace(title)
 	if len(title) > 30 {
@@ -325,6 +387,12 @@ func extractKeyword(title string) string {
 			title = string(runes[:30])
 		}
 	}
+
+	// 빈 문자열이거나 너무 짧으면 무시
+	if len(title) < 2 {
+		return ""
+	}
+
 	return title
 }
 

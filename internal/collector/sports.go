@@ -265,8 +265,8 @@ func (s *SportsCollector) GetSportsNewsRSS(ctx context.Context) ([]SportsNews, e
 		resp, err := s.client.Do(req)
 		if err != nil {
 			continue
-		}
-		defer resp.Body.Close()
+	}
+	defer resp.Body.Close()
 
 		var rss struct {
 			XMLName xml.Name `xml:"rss"`
@@ -604,14 +604,14 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 			sourceLink := item.Source
 			if item.SourceURL != "" {
 				sourceLink = fmt.Sprintf(`<a href="%s" target="_blank">%s 바로가기 →</a>`, item.SourceURL, item.Source)
-			}
+		}
 			content.WriteString(fmt.Sprintf(`
 <div class="news-card">
 	<h4 class="news-title">%s</h4>
 	<p class="news-source">📰 %s</p>
 </div>
 `, newsLink, sourceLink))
-		}
+	}
 
 		// 종목별 추천 상품
 		if products, ok := sportsProducts[category]; ok && s.coupangID != "" {
@@ -642,7 +642,7 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 	}
 
 	// KBO 순위
-	content.WriteString(`
+		content.WriteString(`
 <div class="category-section">
 <h2 class="category-title">⚾ 2024 KBO 최종 순위</h2>
 <div style="overflow-x: auto;">
@@ -651,7 +651,7 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 <th>순위</th><th>팀</th><th>승</th><th>패</th><th>무</th><th>승률</th>
 </tr>
 `)
-	for i, team := range s.GetKBOStandings(context.Background()) {
+		for i, team := range s.GetKBOStandings(context.Background()) {
 		rankEmoji := ""
 		if i == 0 {
 			rankEmoji = "🥇 "
@@ -660,17 +660,17 @@ func (s *SportsCollector) GenerateSportsPost(news []SportsNews) *Post {
 		} else if i == 2 {
 			rankEmoji = "🥉 "
 		}
-		bgColor := "#fff"
+			bgColor := "#fff"
 		if i < 3 {
 			bgColor = "#ffeaa7"
-		}
-		content.WriteString(fmt.Sprintf(`<tr style="background: %s;">
+			}
+			content.WriteString(fmt.Sprintf(`<tr style="background: %s;">
 <td style="font-weight: bold;">%s%d</td>
 <td style="font-weight: bold;">%s</td>
 <td>%d</td><td>%d</td><td>%d</td><td>%s</td>
 </tr>
 `, bgColor, rankEmoji, i+1, team.Name, team.Wins, team.Losses, team.Draws, team.Pct))
-	}
+		}
 	content.WriteString(`</table></div></div>`)
 
 	// 푸터
