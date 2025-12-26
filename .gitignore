@@ -27,3 +27,5 @@ config.yaml
 .DS_Store
 Thumbs.db
 
+browser_data/
+thumbnails/
